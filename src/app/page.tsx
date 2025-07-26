@@ -15,13 +15,9 @@ export default function Page() {
           <div className="h-12 w-12 text-white lg:w-16">
             <p
               className={`${lusitana.className} text-3xl text-gray-800 md:text-xl md:leading-normal`}
-            >
-              <strong>Welcome to Acme.</strong> This is the example for the{" "}
-              <a href="https://nextjs.org/learn/" className="text-blue-500">
-                Next.js Learn Course
-              </a>
-              , brought to you by Vercel.
-            </p>
+            >COSO
+          </p>
+              
           </div>
           <Link
             href="/login"
@@ -49,4 +45,4 @@ export default function Page() {
       </div>
     </main>
   );
-}
+};
