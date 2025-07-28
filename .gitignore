@@ -43,3 +43,9 @@ next-env.d.ts
 GEMINI.md
 ./GEMINI.md
 /GEMINI.md
+
+*.db
+*.sqlite
+*.sql.gz
+*.dump
+

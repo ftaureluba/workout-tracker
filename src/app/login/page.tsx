@@ -1,8 +1,5 @@
-
 import { lusitana } from "@/app/ui/fonts";
-import { glob } from "glob";
 import LoginForm from "./login-form"
-
 
 export default function LoginPage() {
   return (
@@ -14,6 +11,9 @@ export default function LoginPage() {
           </div>
         </div>
         <LoginForm />
+        <p className="text-center text-sm text-gray-500">
+          Don't have an account? <a href="/signup" className="font-semibold text-blue-500">Sign up</a>
+        </p>
       </div>
     </main>
   );

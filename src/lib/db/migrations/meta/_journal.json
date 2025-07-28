@@ -15,6 +15,13 @@
       "when": 1753569635325,
       "tag": "0001_mysterious_tinkerer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1753705941509,
+      "tag": "0002_dark_wonder_man",
+      "breakpoints": true
     }
   ]
 }

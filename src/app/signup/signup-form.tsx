@@ -1,4 +1,5 @@
 "use client";
+
 import { lusitana } from "@/app/ui/fonts";
 import {
   AtSymbolIcon,
@@ -6,60 +7,43 @@ import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
-import { Button } from "./button";
+import { Button } from "../login/button";
 import { useActionState } from "react";
-import { signIn } from "next-auth/react";
-import { verifyCredentials } from "@/lib/actions";
-import { useState } from "react";
+import { signup } from "@/lib/actions";
 
-export default function LoginForm() {
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isPending, setIsPending] = useState(false);
-
-  async function handleSubmit(formData: FormData) {
-    setIsPending(true);
-    setErrorMessage("");
-
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    try {
-      // First verify credentials on server
-      const result = await verifyCredentials(email, password);
-      
-      if (result.success) {
-        // Then sign in on client
-        const signInResult = await signIn("credentials", {
-          email,
-          password,
-          redirect: false, // Don't redirect automatically
-        });
-
-        if (signInResult?.error) {
-          setErrorMessage("Invalid credentials.");
-        } else {
-          // Redirect on success
-          window.location.href = "/dashboard"; // or use router.push("/dashboard")
-        }
-      } else {
-        setErrorMessage(result.message);
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      setErrorMessage("Something went wrong.");
-    } finally {
-      setIsPending(false);
-    }
-  }
+export default function SignupForm() {
+  const [errorMessage, formAction, isPending] = useActionState(
+    signup,
+    undefined
+  );
 
   return (
-    <form action={handleSubmit} className="space-y-3">
+    <form action={formAction} className="space-y-3">
       <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
         <h1 className={`${lusitana.className} mb-3 text-2xl`}>
-          Please log in to continue.
+          Create an account
         </h1>
         <div className="w-full">
           <div>
+            <label
+              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
+              htmlFor="name"
+            >
+              Name
+            </label>
+            <div className="relative">
+              <input
+                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500 text-gray-900"
+                id="name"
+                type="text"
+                name="name"
+                placeholder="Enter your name"
+                required
+              />
+              <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+            </div>
+          </div>
+          <div className="mt-4">
             <label
               className="mb-3 mt-5 block text-xs font-medium text-gray-900"
               htmlFor="email"
@@ -68,13 +52,12 @@ export default function LoginForm() {
             </label>
             <div className="relative">
               <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500 text-gray-900"
                 id="email"
                 type="email"
                 name="email"
                 placeholder="Enter your email address"
                 required
-                disabled={isPending}
               />
               <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
@@ -88,20 +71,21 @@ export default function LoginForm() {
             </label>
             <div className="relative">
               <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500 text-gray-900"
                 id="password"
                 type="password"
                 name="password"
                 placeholder="Enter password"
                 required
                 minLength={6}
-                disabled={isPending}
               />
               <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
         </div>
-        <LoginButton isPending={isPending} />
+        <Button className="mt-4 w-full">
+          Sign up <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
+        </Button>
         <div
           className="flex h-8 items-end space-x-1"
           aria-live="polite"
@@ -116,14 +100,5 @@ export default function LoginForm() {
         </div>
       </div>
     </form>
-  );
-}
-
-function LoginButton({ isPending }: { isPending: boolean }) {
-  return (
-    <Button className="mt-4 w-full" disabled={isPending}>
-      {isPending ? "Logging in..." : "Log in"}{" "}
-      <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
-    </Button>
   );
 }
