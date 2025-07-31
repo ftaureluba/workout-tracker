@@ -1,12 +1,31 @@
 
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
 
-import NextAuth from "next-auth";
-import { authConfig } from "./auth.config";
+export default auth((req) => {
+  const { nextUrl } = req;
+  const isLoggedIn = !!req.auth;
 
-export default NextAuth(authConfig).auth;
+  console.log("Middleware - Path:", nextUrl.pathname, "Logged in:", isLoggedIn);
+
+  // Public routes that don't need auth
+  const isPublicRoute = ["/", "/login", "/signup"].includes(nextUrl.pathname);
+  
+  // Protect all routes except public ones
+  if (!isPublicRoute && !isLoggedIn) {
+    console.log("Redirecting to login");
+    return NextResponse.redirect(new URL("/login", nextUrl));
+  }
+
+  // If logged in and trying to access login/signup, redirect to dashboard
+  if (isLoggedIn && ["/login", "/signup"].includes(nextUrl.pathname)) {
+    console.log("Redirecting to dashboard");
+    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
-  // https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
   matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
 };
-

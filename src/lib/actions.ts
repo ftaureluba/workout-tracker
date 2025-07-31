@@ -1,8 +1,9 @@
-"use server"
+"use server";
 import { db } from "./db";
 import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { SignupFormSchema } from "./definitions";
 
 export async function verifyCredentials(email: string, password: string) {
   try {
@@ -30,22 +31,30 @@ export async function verifyCredentials(email: string, password: string) {
 }
 
 export async function signup(prevState: any, formData: FormData) {
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const validatedFields = SignupFormSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing Fields. Failed to Create Account.",
+    };
+  }
+
+  const { name, email, password } = validatedFields.data;
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
-    // Hash the password before storing
-    const hashedPassword = await bcrypt.hash(password, 12);
-    
     await db.insert(users).values({
       name: name,
       email: email,
-      password: hashedPassword, // Store hashed password
+      password: hashedPassword,
     });
-    return "Signup successful!";
+    return { message: "Account created successfully" };
   } catch (error) {
-    console.error("Signup error:", error);
-    return "Something went wrong.";
+    return { message: "Database Error: Failed to Create Account." };
   }
 }

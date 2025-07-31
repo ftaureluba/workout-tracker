@@ -7,49 +7,38 @@ import {
 } from "@heroicons/react/24/outline";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { Button } from "./button";
-import { useActionState } from "react";
+import { useFormState, useFormStatus } from "react-dom";
+import { useState } from "react"
 import { signIn } from "next-auth/react";
-import { verifyCredentials } from "@/lib/actions";
-import { useState } from "react";
+import { verifyCredentials } from "@/lib/actions"
+
 
 export default function LoginForm() {
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
-    setIsPending(true);
-    setErrorMessage("");
-
+    setLoading(true);
+    setError("");
+    
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    try {
-      // First verify credentials on server
-      const result = await verifyCredentials(email, password);
-      
-      if (result.success) {
-        // Then sign in on client
-        const signInResult = await signIn("credentials", {
-          email,
-          password,
-          redirect: false, // Don't redirect automatically
-        });
-
-        if (signInResult?.error) {
-          setErrorMessage("Invalid credentials.");
-        } else {
-          // Redirect on success
-          window.location.href = "/dashboard"; // or use router.push("/dashboard")
-        }
-      } else {
-        setErrorMessage(result.message);
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      setErrorMessage("Something went wrong.");
-    } finally {
-      setIsPending(false);
+    // 1. Verify credentials on server
+    const result = await verifyCredentials(email, password);
+    
+    if (result.success) {
+      // 2. Sign in with NextAuth on client
+      await signIn("credentials", {
+        email,
+        password,
+        callbackUrl: "/dashboard"
+      });
+    } else {
+      setError(result.message);
     }
+    
+    setLoading(false);
   }
 
   return (
@@ -74,7 +63,6 @@ export default function LoginForm() {
                 name="email"
                 placeholder="Enter your email address"
                 required
-                disabled={isPending}
               />
               <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
@@ -95,19 +83,18 @@ export default function LoginForm() {
                 placeholder="Enter password"
                 required
                 minLength={6}
-                disabled={isPending}
               />
               <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
         </div>
-        <LoginButton isPending={isPending} />
+        <LoginButton />
         <div
           className="flex h-8 items-end space-x-1"
           aria-live="polite"
           aria-atomic="true"
         >
-          {errorMessage && (
+          {error && (
             <>
               <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
               <p className="text-sm text-red-500">{errorMessage}</p>
@@ -119,11 +106,12 @@ export default function LoginForm() {
   );
 }
 
-function LoginButton({ isPending }: { isPending: boolean }) {
+function LoginButton() {
+  const { pending } = useFormStatus();
+
   return (
-    <Button className="mt-4 w-full" disabled={isPending}>
-      {isPending ? "Logging in..." : "Log in"}{" "}
-      <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
+    <Button className="mt-4 w-full" aria-disabled={pending}>
+      Log in <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
     </Button>
   );
 }

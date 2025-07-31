@@ -1,15 +1,26 @@
-import NextAuth from "next-auth";
+import NextAuth, { AuthError } from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { users } from "./db/schema"; // Make sure you have this import
-import bcrypt from "bcrypt"; // You'll need this for password comparison
+import { users } from "./db/schema";
+import bcrypt from "bcrypt";
+import { eq } from "drizzle-orm";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const {
+  handlers,
+  auth,
+  signIn, 
+  signOut,
+  unstable_update: update,
+} = NextAuth({
   adapter: DrizzleAdapter(db),
+  session: { strategy: "jwt" },
   providers: [
-    Google,
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     Credentials({
       name: "credentials",
       credentials: {
@@ -25,16 +36,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await db
           .select()
           .from(users)
-          .where(eq(users.email, credentials.email))
+          .where(eq(users.email, credentials.email as string))
           .limit(1);
 
         if (!user.length) {
           return null;
         }
 
-        // Check password (assuming you're hashing passwords)
+        // Check password
         const isValidPassword = await bcrypt.compare(
-          credentials.password,
+          credentials.password as string,
           user[0].password
         );
 
@@ -51,3 +62,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     })
   ],
 });
+
+export { AuthError };
