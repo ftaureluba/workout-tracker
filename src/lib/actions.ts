@@ -30,7 +30,7 @@ export async function verifyCredentials(email: string, password: string) {
   }
 }
 
-export async function signup(prevState: any, formData: FormData) {
+export async function signup(prevState: unkwown, formData: FormData) {
   const validatedFields = SignupFormSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),

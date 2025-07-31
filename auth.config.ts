@@ -1,7 +1,7 @@
 
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 
-export const authConfig = {
+export const authConfig: NextAuthOptions  = {
   pages: {
     signIn: "/login",
   },
@@ -19,4 +19,4 @@ export const authConfig = {
     },
   },
   providers: [], // Add providers with an empty array for now
-} satisfies NextAuthConfig;
+};

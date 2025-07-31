@@ -12,8 +12,9 @@ export default function LoginPage() {
         </div>
         <LoginForm />
         <p className="text-center text-sm text-gray-500">
-          Don't have an account? <a href="/signup" className="font-semibold text-blue-500">Sign up</a>
+          Don&apos;t have an account? <a href="/signup" className="font-semibold text-blue-500">Sign up</a>
         </p>
+          
       </div>
     </main>
   );
