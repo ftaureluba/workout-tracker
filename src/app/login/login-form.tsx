@@ -35,7 +35,7 @@ export default function LoginForm() {
         callbackUrl: "/dashboard"
       });
     } else {
-      setError(result.message);
+      setError(result.message || "An error ocurred.");
     }
     
     setLoading(false);
@@ -97,8 +97,8 @@ export default function LoginForm() {
           {error && (
             <>
               <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
-              <p className="text-sm text-red-500">{errorMessage}</p>
-            </>
+                <p className="text-sm text-red-500">{error || "An error ocurred."}</p>
+              </>
           )}
         </div>
       </div>

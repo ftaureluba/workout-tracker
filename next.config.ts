@@ -10,4 +10,5 @@ const pwaConfig = withPWA({
   disable: process.env.NODE_ENV === "development",
 });
 
-export default pwaConfig(nextConfig);
+// Cast nextConfig to any to bypass the type checking
+export default pwaConfig(nextConfig as any);
