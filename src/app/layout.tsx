@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import {Providers} from "./providers"
@@ -17,8 +17,13 @@ export const metadata: Metadata = {
   title: "Workout Tracker",
   description: "Track your workouts and progress.",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#000000",
-  viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

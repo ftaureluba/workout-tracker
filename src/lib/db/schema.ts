@@ -1,23 +1,12 @@
+import { text, pgTable, serial, timestamp, primaryKey, integer, boolean, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import {
-  boolean,
-  integer,
-  jsonb,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name"),
-  email: text("email").notNull(),
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  emailVerified: timestamp("emailVerified", { mode: "date" }),
-  image: text("image"),
-  createdAt: timestamp("created_at").default(sql`now()`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const workouts = pgTable("workouts", {

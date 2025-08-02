@@ -3,7 +3,8 @@ import { db } from "./db";
 import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
-import { SignupFormSchema } from "./definitions";
+import { SignupFormSchema, State } from "./definitions";
+import { redirect } from "next/navigation";
 
 export async function verifyCredentials(email: string, password: string) {
   try {
@@ -23,14 +24,17 @@ export async function verifyCredentials(email: string, password: string) {
       return { success: false, message: "Invalid credentials." };
     }
 
-    return { success: true, user: { email: user[0].email, name: user[0].name } };
+    return {
+      success: true,
+      user: { email: user[0].email, name: user[0].name },
+    };
   } catch (error) {
     console.error("Verification error:", error);
     return { success: false, message: "Something went wrong." };
   }
 }
 
-export async function signup(prevState: unkwown, formData: FormData) {
+export async function signup(prevState: State, formData: FormData) {
   const validatedFields = SignupFormSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -53,8 +57,8 @@ export async function signup(prevState: unkwown, formData: FormData) {
       email: email,
       password: hashedPassword,
     });
-    return { message: "Account created successfully" };
-  } catch (error) {
+  } catch {
     return { message: "Database Error: Failed to Create Account." };
   }
+  redirect("/login");
 }

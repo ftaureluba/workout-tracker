@@ -1,4 +1,4 @@
-import NextAuth, { AuthError } from "next-auth";
+import NextAuth from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
 import Google from "next-auth/providers/google";
@@ -54,7 +54,7 @@ export const {
         }
 
         return {
-          id: user[0].id,
+          id: user[0].id.toString(),
           email: user[0].email,
           name: user[0].name,
         };
@@ -63,4 +63,4 @@ export const {
   ],
 });
 
-export { AuthError };
+

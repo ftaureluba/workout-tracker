@@ -10,9 +10,10 @@ import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { Button } from "../login/button";
 import { useFormState, useFormStatus } from "react-dom";
 import { signup } from "@/lib/actions";
+import { State } from "@/lib/definitions";
 
 export default function SignupForm() {
-  const initialState = { message: null, errors: {} };
+  const initialState: State = { message: null, errors: {} };
   const [state, dispatch] = useFormState(signup, initialState);
 
   return (

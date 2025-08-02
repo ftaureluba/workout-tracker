@@ -7,7 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { Button } from "./button";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { useState } from "react"
 import { signIn } from "next-auth/react";
 import { verifyCredentials } from "@/lib/actions"
@@ -15,10 +15,8 @@ import { verifyCredentials } from "@/lib/actions"
 
 export default function LoginForm() {
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
-    setLoading(true);
     setError("");
     
     const email = formData.get("email") as string;
@@ -38,7 +36,6 @@ export default function LoginForm() {
       setError(result.message || "An error ocurred.");
     }
     
-    setLoading(false);
   }
 
   return (
