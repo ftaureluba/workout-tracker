@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 
 export async function verifyCredentials(email: string, password: string) {
   try {
+    console.log("[verifyCredentials] Attempting to verify:", email);
     const user = await db
       .select()
       .from(users)
@@ -15,10 +16,13 @@ export async function verifyCredentials(email: string, password: string) {
       .limit(1);
 
     if (!user.length) {
+      console.log("[verifyCredentials] User not found.");
       return { success: false, message: "Invalid credentials." };
     }
+    console.log("[verifyCredentials] User found:", user[0].email);
 
     const isValidPassword = await bcrypt.compare(password, user[0].password);
+    console.log("[verifyCredentials] Password valid:", isValidPassword);
 
     if (!isValidPassword) {
       return { success: false, message: "Invalid credentials." };
@@ -29,7 +33,7 @@ export async function verifyCredentials(email: string, password: string) {
       user: { email: user[0].email, name: user[0].name },
     };
   } catch (error) {
-    console.error("Verification error:", error);
+    console.error("[verifyCredentials] Error:", error);
     return { success: false, message: "Something went wrong." };
   }
 }

@@ -691,9 +691,6 @@ export default function HomePage() {
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* Header Navigation */}
         <header className="flex items-center justify-between px-4 sm:px-6 py-4 lg:px-12">
-          <div className="flex items-center space-x-2 pl-3 sm:pl-6 lg:pl-12">
-            <img src="/v0-logo.png" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />
-          </div>
 
           <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
             <a href="#" className="text-white/80 hover:text-white transition-colors text-sm lg:text-base">
@@ -713,8 +710,9 @@ export default function HomePage() {
           </button>
           <Button
           
-          onClick={() => router.push('/signup')}>
-            Log in
+          onClick={() => router.push('/signup')}
+          className="group relative bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-xs lg:text-lg font-semibold flex items-center gap-2 backdrop-blur-sm border border-orange-400/30 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 hover:scale-105 hover:-translate-y-0.5">
+            Registrarse
           </Button>
         </header>
 
@@ -726,19 +724,12 @@ export default function HomePage() {
                 Features
               </a>
               <a href="#" className="text-white/80 hover:text-white transition-colors">
-                Pricing
+                Precio
               </a>
-              <a href="#" className="text-white/80 hover:text-white transition-colors">
-                About us
-              </a>
+              
               <a href="#" className="text-white/80 hover:text-white transition-colors">
                 Contact
               </a>
-              <Button
-              
-          onClick={() => router.push('/signup')}>
-                Log In
-              </Button>
             </nav>
           </div>
         )}

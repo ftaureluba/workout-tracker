@@ -11,28 +11,40 @@ import { Button } from "../login/button";
 import { useFormState, useFormStatus } from "react-dom";
 import { signup } from "@/lib/actions";
 import { State } from "@/lib/definitions";
+import { Input } from "../ui/input"
+import { Label } from "../ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
+import { Mail, Lock, ArrowRight } from "lucide-react"
+
 
 export default function SignupForm() {
   const initialState: State = { message: null, errors: {} };
   const [state, dispatch] = useFormState(signup, initialState);
 
   return (
-    <form action={dispatch} className="space-y-3">
-      <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
-        <h1 className={`${lusitana.className} mb-3 text-2xl`}>
-          Create an account
-        </h1>
+    <Card className="w-full shadow-xl border-0 bg-card">
+      <CardHeader className="space-y-4 pb-8">
+        <div className="text-center">
+          <CardTitle className="font-bold text-card-foreground text-4xl">Bienvenido!</CardTitle>
+          <CardDescription className="text-muted-foreground mt-2 text-base">
+            Crear una cuenta para continuar.
+          </CardDescription>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+    <form action={dispatch} className="space-y-6">
         <div className="w-full">
           <div>
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
+            <Label
+              className="text-sm font-medium text-card-foreground"
               htmlFor="name"
             >
               Name
-            </label>
+            </Label>
             <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+              <Input
+                className="pl-10 h-12 bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200"
                 id="name"
                 type="text"
                 name="name"
@@ -51,21 +63,19 @@ export default function SignupForm() {
             </div>
           </div>
           <div className="mt-4">
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor="email"
-            >
+            <Label htmlFor="email" className="text-sm font-medium text-card-foreground">
               Email
-            </label>
+            </Label>
             <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+              <Input
                 id="email"
                 type="email"
+                className="pl-10 h-12 bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200"
+                required
                 name="email"
                 placeholder="Enter your email address"
-                required
               />
+                
               <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
             <div id="email-error" aria-live="polite" aria-atomic="true">
@@ -78,15 +88,15 @@ export default function SignupForm() {
             </div>
           </div>
           <div className="mt-4">
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
+            <Label
+              className="text-sm font-medium text-card-foreground"
               htmlFor="password"
             >
               Password
-            </label>
+            </Label>
             <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+              <Input
+                className="pl-10 h-12 bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200"
                 id="password"
                 type="password"
                 name="password"
@@ -119,8 +129,9 @@ export default function SignupForm() {
             </>
           )}
         </div>
-      </div>
     </form>
+    </CardContent>
+    </Card>
   );
 }
 
@@ -128,8 +139,11 @@ function SignupButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button className="mt-4 w-full" aria-disabled={pending}>
-      Sign up <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
-    </Button>
+    <Button aria-disabled={pending}
+    className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+          >
+            Crear cuenta
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+          </Button>
   );
 }

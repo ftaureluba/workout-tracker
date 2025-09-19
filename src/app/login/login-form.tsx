@@ -1,16 +1,16 @@
 "use client";
-import { lusitana } from "@/app/ui/fonts";
 import {
-  AtSymbolIcon,
-  KeyIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
-import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { Button } from "./button";
 import { useFormStatus } from "react-dom";
 import { useState } from "react"
 import { signIn } from "next-auth/react";
 import { verifyCredentials } from "@/lib/actions"
+import { Input } from "../ui/input"
+import { Label } from "../ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
+import { Mail, Lock, ArrowRight } from "lucide-react"
 
 
 export default function LoginForm() {
@@ -22,11 +22,9 @@ export default function LoginForm() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    // 1. Verify credentials on server
     const result = await verifyCredentials(email, password);
     
     if (result.success) {
-      // 2. Sign in with NextAuth on client
       await signIn("credentials", {
         email,
         password,
@@ -39,67 +37,76 @@ export default function LoginForm() {
   }
 
   return (
-    <form action={handleSubmit} className="space-y-3">
-      <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
-        <h1 className={`${lusitana.className} mb-3 text-2xl`}>
-          Please log in to continue.
-        </h1>
-        <div className="w-full">
-          <div>
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor="email"
-            >
+    <Card className="w-full shadow-xl border-0 bg-card">
+      <CardHeader className="space-y-4 pb-8">
+        <div className="text-center">
+          <CardTitle className="font-bold text-card-foreground text-4xl">Bienvenido!</CardTitle>
+          <CardDescription className="text-muted-foreground mt-2 text-base">
+            Inicia sesion para continuar
+          </CardDescription>
+        </div>
+      </CardHeader>
+
+
+      <CardContent className="space-y-6">
+        <form action={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium text-card-foreground">
               Email
-            </label>
+            </Label>
             <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
                 id="email"
                 type="email"
                 name="email"
-                placeholder="Enter your email address"
+                className="pl-10 h-12 bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200"
                 required
               />
-              <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
-          <div className="mt-4">
-            <label
-              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
-              htmlFor="password"
-            >
-              Password
-            </label>
+
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-medium text-card-foreground">
+              Contraseña
+            </Label>
             <div className="relative">
-              <input
-                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
                 id="password"
-                type="password"
                 name="password"
-                placeholder="Enter password"
+                className="pl-10 pr-10 h-12 bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200"
                 required
-                minLength={6}
               />
-              <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
           </div>
-        </div>
-        <LoginButton />
-        <div
-          className="flex h-8 items-end space-x-1"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {error && (
-            <>
-              <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
-                <p className="text-sm text-red-500">{error || "An error ocurred."}</p>
-              </>
-          )}
-        </div>
-      </div>
-    </form>
+
+          <div className="flex items-center justify-between text-sm">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" className="rounded border-border text-primary focus:ring-ring focus:ring-2" />
+              <span className="text-muted-foreground">Recordarme</span>
+            </label>
+            <a href="#" className="text-primary hover:text-primary/80 font-medium transition-colors">
+             Olvidaste la contraseña?
+            </a>
+          </div>
+                
+            <LoginButton />
+            <div
+              className="flex h-8 items-end space-x-1"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {error && (
+                <>
+                  <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+                    <p className="text-sm text-red-500">{error || "An error ocurred."}</p>
+                  </>
+              )}
+            </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -107,8 +114,11 @@ function LoginButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button className="mt-4 w-full" aria-disabled={pending}>
-      Log in <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
-    </Button>
+    <Button aria-disabled={pending}
+    className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+          >
+            Iniciar sesion
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+          </Button>
   );
 }

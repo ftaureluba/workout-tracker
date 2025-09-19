@@ -28,7 +28,9 @@ export const {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        console.log("[authorize] Attempting to authorize with credentials:", credentials?.email);
         if (!credentials?.email || !credentials?.password) {
+          console.log("[authorize] Missing email or password.");
           return null;
         }
 
@@ -40,19 +42,24 @@ export const {
           .limit(1);
 
         if (!user.length) {
+          console.log("[authorize] User not found.");
           return null;
         }
+        console.log("[authorize] User found:", user[0].email);
 
         // Check password
         const isValidPassword = await bcrypt.compare(
           credentials.password as string,
           user[0].password
         );
+        console.log("[authorize] Password valid:", isValidPassword);
 
         if (!isValidPassword) {
+          console.log("[authorize] Invalid password.");
           return null;
         }
 
+        console.log("[authorize] Authorization successful.");
         return {
           id: user[0].id.toString(),
           email: user[0].email,
