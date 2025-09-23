@@ -11,7 +11,7 @@ export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
   return (
-    <div className="min-h-screen relative overflow-hidden bg-black">
+    <div className="min-h-screen relative overflow-hidden bg-texture bg-black">
       {/* Animated Background Layer */}
       <div className="absolute inset-0 z-0">
         <svg

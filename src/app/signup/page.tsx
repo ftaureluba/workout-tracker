@@ -139,7 +139,7 @@ export default function SignupPage() {
               </svg>
               </div>
               
-          <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="min-h-screen bg-background flex items-center justify-center p-4 bg-texture">
           <div className="w-full max-w-md">
             <SignupForm />
             <p className="text-center text-sm text-gray-500">

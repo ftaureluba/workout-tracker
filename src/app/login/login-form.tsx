@@ -4,8 +4,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { Button } from "./button";
 import { useFormStatus } from "react-dom";
-import { useState } from "react"
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react"
+import { signIn, useSession } from "next-auth/react";
 import { verifyCredentials } from "@/lib/actions"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
@@ -13,17 +13,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { Mail, Lock, ArrowRight } from "lucide-react"
 
 
+import { useRouter } from "next/navigation";
+
 export default function LoginForm() {
   const [error, setError] = useState("");
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (session) {
+      router.replace("/dashboard");
+    }
+  }, [session, router]);
 
   async function handleSubmit(formData: FormData) {
     setError("");
-    
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-
     const result = await verifyCredentials(email, password);
-    
     if (result.success) {
       await signIn("credentials", {
         email,
@@ -33,7 +40,6 @@ export default function LoginForm() {
     } else {
       setError(result.message || "An error ocurred.");
     }
-    
   }
 
   return (

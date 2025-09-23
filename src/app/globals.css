@@ -37,6 +37,8 @@
   --sidebar-accent-foreground: oklch(0.2050 0 0);
   --sidebar-border: oklch(0.9220 0 0);
   --sidebar-ring: oklch(0.7080 0 0);
+  --background-image: url("https://www.transparenttextures.com/patterns/cartographer.png");
+
 }
 
 .dark {
@@ -73,6 +75,7 @@
   --sidebar-border: oklch(0.2750 0 0);
   --sidebar-ring: oklch(0.4390 0 0);
   --speed: 1s;
+  --background-image: url("https://www.transparenttextures.com/patterns/binding-light.png");
 }
 
 @theme inline {
@@ -161,5 +164,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image: var(--background-image);
+    background-repeat: repeat;
+  }
+}
+@layer utilities {
+  .bg-texture {
+    background-image: var(--background-image);
+    background-repeat: repeat;
   }
 }

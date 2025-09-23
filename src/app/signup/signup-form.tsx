@@ -8,19 +8,29 @@ import {
 } from "@heroicons/react/24/outline";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { Button } from "../login/button";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { signup } from "@/lib/actions";
 import { State } from "@/lib/definitions";
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Mail, Lock, ArrowRight } from "lucide-react"
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 
 
 export default function SignupForm() {
   const initialState: State = { message: null, errors: {} };
-  const [state, dispatch] = useFormState(signup, initialState);
+  const [state, dispatch] = useActionState(signup, initialState);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
+  useEffect(() => {
+    if (session) {
+      router.replace("/dashboard");
+    }
+  }, [session, router]);
   return (
     <Card className="w-full shadow-xl border-0 bg-card">
       <CardHeader className="space-y-4 pb-8">
