@@ -22,6 +22,20 @@
       "when": 1753705941509,
       "tag": "0002_dark_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1758631396667,
+      "tag": "0003_graceful_firebird",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1758634044456,
+      "tag": "0004_flashy_power_pack",
+      "breakpoints": true
     }
   ]
 }
