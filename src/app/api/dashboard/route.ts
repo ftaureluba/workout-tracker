@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
-import { workouts, workoutExercises, exercises, users } from "@/lib/db/schema";
-import type { Workout, WorkoutExercise } from "@/lib/types";
+import { workouts, workoutExercises } from "@/lib/db/schema";
 import { auth } from "@/lib/auth"; // Import the auth function
 
 export async function GET() {
@@ -104,5 +103,118 @@ export async function POST(request: Request){
       { error: "Internal Server Error" },
       { status: 500 }
     );
+  }
+}
+
+export async function PUT(request: Request){
+  const session = await auth();
+
+  if (!session?.user.id){
+    return NextResponse.json({error: "Unauthorized"}, {status: 401})
+  }
+
+  try {
+    const body = await request.json();
+    const {id, name, description, notes, exercises: exercisesData} = body;
+
+    if (!id || typeof id !== "string") {
+      return NextResponse.json({ error: "id is required for update" }, { status: 400 });
+    }
+
+    if (!name || typeof name !== "string"){
+      return NextResponse.json( {error: "name is required"}, {status: 400})
+    }
+
+    if (!exercisesData || !Array.isArray(exercisesData)) {
+      return NextResponse.json(
+        { error: "Exercises must be an array" },
+        { status: 400 }
+      );
+    }
+
+    // Ensure the workout belongs to the user
+    const existing = await db.query.workouts.findFirst({ where: eq(workouts.id, id) });
+    if (!existing) {
+      return NextResponse.json({ error: "Workout not found" }, { status: 404 });
+    }
+    if (existing.userId !== session.user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    await db.update(workouts).set({ name, description: description || null }).where(eq(workouts.id, id));
+
+    // Remove previous workoutExercises and re-insert the provided list
+    await db.delete(workoutExercises).where(eq(workoutExercises.workoutId, id));
+
+    const WorkoutExercisesValues = exercisesData.map( (ex: any, index: number) => ({
+      workoutId: id,
+      exerciseId: ex.id,
+      order: ex.order ?? index,
+      plannedSets: ex.plannedSets || null,
+      plannedReps: ex.plannedReps || null,
+      plannedWeight: ex.plannedWeight || null,
+      restTimeSeconds: ex.restTimeSeconds || null,
+      notes: ex.notes  || null,
+      isSuperSet: ex.isSuperset || false,
+      supersetGroup: ex.supersetGroup  || null
+    }))
+
+    if (WorkoutExercisesValues.length > 0) {
+      await db.insert(workoutExercises).values(WorkoutExercisesValues);
+    }
+
+    const completeWorkout = await db.query.workouts.findFirst({
+      where: eq(workouts.id, id),
+      with : {
+        workoutExercises: {
+          with : {exercise: true},
+          orderBy: (workoutExercises, {asc}) => [asc(workoutExercises.order)]
+        }
+      }
+    })
+
+    if (!completeWorkout){return NextResponse.json({error: "failed to fetch updated workout"}, {status: 500})}
+
+    return NextResponse.json(completeWorkout, {status: 200})
+  } catch(error){
+    console.error("Error updating workout:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request){
+  const session = await auth();
+
+  if (!session?.user.id){
+    return NextResponse.json({error: "Unauthorized"}, {status: 401})
+  }
+
+  try {
+    const body = await request.json();
+    const { id } = body;
+
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    const existing = await db.query.workouts.findFirst({ where: eq(workouts.id, id) });
+    if (!existing) {
+      return NextResponse.json({ error: 'Workout not found' }, { status: 404 });
+    }
+    if (existing.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // delete related workoutExercises then the workout
+    await db.delete(workoutExercises).where(eq(workoutExercises.workoutId, id));
+    await db.delete(workouts).where(eq(workouts.id, id));
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error('Error deleting workout:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

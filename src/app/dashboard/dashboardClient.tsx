@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { saveWorkoutsToCache, getAllWorkoutsFromCache, getAllActiveSessions, deleteActiveSession, } from "@/lib/indexdb";
 import type { Workout, ActiveSession } from "@/lib/types";
 import { ResumeSessionCard } from "./resumeSessionCard";
+import RoutineEditor from "@/app/components/routine-editor";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/ui/card";
-import { Menu, User, Plus, Dumbbell, X, Clock, Target } from "lucide-react";
+import { Menu, User, Plus, Dumbbell, Edit3 } from "lucide-react";
 
 interface DashboardClientProps {
   workouts: Workout[];
@@ -24,6 +25,16 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | undefined>();
 
   const handleWorkoutClick = (routine: Workout) => {
+    // Open the start-workout confirmation modal
+    setStartWorkout(routine);
+    setStartModalOpen(true);
+  };
+
+  const [startModalOpen, setStartModalOpen] = useState(false);
+  const [startWorkout, setStartWorkout] = useState<Workout | null>(null);
+
+  const openEditorFor = (routine: Workout) => {
+    // stop the start modal and open the editor instead
     setSelectedWorkout(routine);
     setIsModalOpen(true);
   };
@@ -111,9 +122,8 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
     }
   }, [isOnline]);
 
-  const startWorkout = (workoutId: string) => {
-    router.push(`/workout/${workoutId}`);
-  };
+  // navigate to a workout (used elsewhere when starting a routine)
+  // removed unused local references to satisfy linting
 
   const resumeSession = (sessionId: string) => {
     router.push(`/workout/resume/${sessionId}`);
@@ -130,7 +140,34 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
   };
 
   const startBlankWorkout = () => {
-    router.push("/workout/new");
+    setSelectedWorkout(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleStartConfirm = (w: Workout | null) => {
+    // navigate to workout page to start a fresh session
+    if (!w) {
+      // close modal and fall back to opening a blank editor (no dedicated new workout route)
+      setStartModalOpen(false);
+      setStartWorkout(null);
+      setSelectedWorkout(undefined);
+      setIsModalOpen(true);
+      return;
+    }
+    // close modal then navigate
+    setStartModalOpen(false);
+    setStartWorkout(null);
+    router.push(`/workout/${w.id}`);
+  };
+
+  const handleSavedWorkout = (w: Workout) => {
+    setWorkouts((prev) => {
+      const found = prev.find((p) => p.id === w.id);
+      if (found) {
+        return prev.map((p) => (p.id === w.id ? w : p));
+      }
+      return [w, ...prev];
+    });
   };
 
   return (
@@ -206,7 +243,20 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
                 <CardContent className="pt-0">
                   <div className="flex justify-between items-center text-sm text-muted-foreground">
                     <span>{routine.workoutExercises.length} exercises</span>
-                    <span>-</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">-</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditorFor(routine);
+                        }}
+                        aria-label="Edit routine"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">Last performed: -</div>
                 </CardContent>
@@ -234,60 +284,34 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
         </Button>
       </div>
 
-      {isModalOpen && selectedWorkout && (
-        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
-          <div className="bg-card w-full max-h-[80vh] rounded-t-xl overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-bold">{selectedWorkout.name}</h2>
-              <Button variant="ghost" size="icon" onClick={closeModal}>
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-4 overflow-y-auto max-h-[calc(80vh-140px)]">
-              <p className="text-muted-foreground mb-4">{selectedWorkout.description ?? ""}</p>
-
-              {/* Workout Stats */}
-              <div className="flex gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">-</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">-</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{selectedWorkout.workoutExercises.length} exercises</span>
-                </div>
-              </div>
-
-              {/* Exercise List */}
-              <div className="mb-6">
-                <h3 className="font-semibold mb-3">Exercises</h3>
-                <div className="space-y-2">
-                  {selectedWorkout.workoutExercises.map((we, index) => (
-                    <div key={we.id ?? index} className="p-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm">{we.exercise?.name ?? "Unnamed exercise"}</span>
-                    </div>
-                  ))}
-                </div>
+      {isModalOpen && (
+        <RoutineEditor
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          initial={selectedWorkout}
+          onSaved={(w) => handleSavedWorkout(w)}
+          onDeleted={(id: string) => setWorkouts((prev) => prev.filter((p) => p.id !== id))}
+        />
+      )}
+      {startModalOpen && startWorkout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setStartModalOpen(false); setStartWorkout(null); }} />
+          <div className="bg-card text-card-foreground rounded-lg p-4 w-full max-w-md z-10 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold">Start Workout</h3>
+              <div>
+                <Button variant="ghost" onClick={() => { setStartModalOpen(false); setStartWorkout(null); }}>Cancel</Button>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t bg-card">
-              <Button
-                className="w-full h-12 text-base font-semibold"
-                size="lg"
-                onClick={() => startWorkout(selectedWorkout.id)}
-              >
-                <Dumbbell className="h-5 w-5 mr-2" />
-                Start Workout
-              </Button>
+            <div className="mb-4">
+              <div className="text-lg font-semibold">{startWorkout.name}</div>
+              <div className="text-sm text-muted-foreground">{startWorkout.workoutExercises.length} exercises</div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => { setStartModalOpen(false); setStartWorkout(null); }}>Cancel</Button>
+              <Button onClick={() => handleStartConfirm(startWorkout)}>Start</Button>
             </div>
           </div>
         </div>
