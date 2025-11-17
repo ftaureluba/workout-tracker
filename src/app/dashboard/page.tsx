@@ -5,6 +5,13 @@ import { DashboardClient } from "./dashboardClient";
 import type { Workout } from "@/lib/types";
 import { cookies } from "next/headers";
 
+
+const baseUrl =
+  process.env.AUTH_URL ??
+  process.env.NEXTAUTH_URL ??
+  process.env.RENDER_EXTERNAL_URL ??
+  "http://localhost:3000";
+
 export default async function DashboardPage() {
   const session = await auth();
   
@@ -14,7 +21,7 @@ export default async function DashboardPage() {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
 
-  const response = await fetch(`/api/dashboard`, {
+  const response = await fetch(`${baseUrl}/api/dashboard`, {
     cache: "no-store",
     headers: {
       Cookie: cookieHeader, 
