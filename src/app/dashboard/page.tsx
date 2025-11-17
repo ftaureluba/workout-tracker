@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
 
-  const response = await fetch(`http://localhost:3000/api/dashboard`, {
+  const response = await fetch(`/api/dashboard`, {
     cache: "no-store",
     headers: {
       Cookie: cookieHeader, 
