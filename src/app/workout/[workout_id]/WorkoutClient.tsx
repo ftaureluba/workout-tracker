@@ -25,9 +25,14 @@ export default function WorkoutClient({ workoutId }: Props) {
   const router = useRouter();
 
   // persistent session id used for autosave and final save
-  const sessionIdRef = React.useRef<string>(
-    (globalThis as any)?.crypto?.randomUUID ? (globalThis as any).crypto.randomUUID() : String(Date.now())
-  );
+  const sessionIdRef = React.useRef<string>(((): string => {
+    try {
+      const maybeCrypto = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto;
+      return typeof maybeCrypto?.randomUUID === 'function' ? maybeCrypto.randomUUID() : String(Date.now());
+    } catch {
+      return String(Date.now());
+    }
+  })());
 
   // Performed values (user inputs) shaped like exercises -> sets -> { reps, weight }
   type PerformedVal = number | "";

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { workouts, workoutExercises } from "@/lib/db/schema";
+import type { WorkoutExercise } from "@/lib/types";
 import { auth } from "@/lib/auth"; // Import the auth function
 
 export async function GET() {
@@ -146,7 +147,19 @@ export async function PUT(request: Request){
     // Remove previous workoutExercises and re-insert the provided list
     await db.delete(workoutExercises).where(eq(workoutExercises.workoutId, id));
 
-    const WorkoutExercisesValues = exercisesData.map( (ex: any, index: number) => ({
+    type PayloadExercise = {
+      id: string;
+      order?: number;
+      plannedSets?: number | null;
+      plannedReps?: number | null;
+      plannedWeight?: number | null;
+      restTimeSeconds?: number | null;
+      notes?: string | null;
+      isSuperset?: boolean;
+      supersetGroup?: number | null;
+    };
+
+    const WorkoutExercisesValues = exercisesData.map( (ex: PayloadExercise, index: number) => ({
       workoutId: id,
       exerciseId: ex.id,
       order: ex.order ?? index,

@@ -1,8 +1,9 @@
 import type React from "react"
 import { cn } from "@/lib/utils"
-import { motion, type MotionProps } from "framer-motion"
+import { motion } from "framer-motion"
 
-interface LineShadowTextProps extends Omit<React.HTMLAttributes<HTMLElement>, keyof MotionProps>, MotionProps {
+// Avoid combining deep MotionProps with React HTML attributes (can cause excessive type instantiation).
+interface LineShadowTextProps extends React.HTMLAttributes<HTMLElement> {
   shadowColor?: string
   as?: React.ElementType
 }
@@ -14,7 +15,8 @@ export function LineShadowText({
   as: Component = "span",
   ...props
 }: LineShadowTextProps) {
-  const MotionComponent = motion[Component as keyof typeof motion] || motion.span
+  // Use `any` to avoid deep type instantiation from framer-motion's MotionComponent typing
+  const MotionComponent: any = (motion as any)[Component as keyof typeof motion] || (motion as any).span
   const content = typeof children === "string" ? children : null
 
   if (!content) {

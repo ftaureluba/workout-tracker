@@ -6,13 +6,22 @@ import { Button } from '@/app/ui/button';
 import { Input } from '@/app/ui/input';
 import { Textarea } from '@/app/ui/textarea';
 import { Plus, Trash2 } from 'lucide-react';
+import type { Exercise } from '@/lib/types';
+
+type NewExercise = {
+  id: string;
+  name: string;
+  plannedSets?: number | string;
+  plannedReps?: number | string;
+  plannedWeight?: number | string;
+};
 
 export default function NewWorkoutPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [exercises, setExercises] = useState<any[]>([]);
-  const [allExercises, setAllExercises] = useState<any[]>([]);
+  const [exercises, setExercises] = useState<NewExercise[]>([]);
+  const [allExercises, setAllExercises] = useState<Exercise[]>([]);
 
   useEffect(() => {
     // Fetch all exercises to populate the dropdown
@@ -34,15 +43,21 @@ export default function NewWorkoutPage() {
   }, []);
 
   const handleAddExercise = () => {
-    setExercises([...exercises, { id: '', name: '', plannedSets: '', plannedReps: '', plannedWeight: '' }]);
+  setExercises([...exercises, { id: '', name: '', plannedSets: '', plannedReps: '', plannedWeight: '' }]);
   };
 
-  const handleExerciseChange = (index: number, field: string, value: any) => {
+  const handleExerciseChange = (index: number, field: keyof NewExercise, value: string | number) => {
     const newExercises = [...exercises];
-    newExercises[index][field] = value;
+    if (field === 'id') {
+      newExercises[index].id = String(value);
+    } else if (field === 'name') {
+      newExercises[index].name = String(value);
+    } else if (field === 'plannedSets' || field === 'plannedReps' || field === 'plannedWeight') {
+      newExercises[index][field] = value;
+    }
 
     if (field === 'id') {
-        const selectedExercise = allExercises.find(ex => ex.id === value);
+    const selectedExercise = allExercises.find(ex => ex.id === String(value));
         if (selectedExercise) {
             newExercises[index]['name'] = selectedExercise.name;
         }

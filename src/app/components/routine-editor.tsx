@@ -65,7 +65,11 @@ export default function RoutineEditor({ isOpen, onClose, initial, onSaved, onDel
         copy[index][field] = value === null ? null : Number(value);
       } else {
         // name/id fields
-        (copy[index] as any)[field] = value as any;
+        if (field === 'id') {
+          copy[index].id = value === null ? '' : String(value);
+        } else if (field === 'name') {
+          copy[index].name = value === null ? '' : String(value);
+        }
       }
       return copy;
     });
