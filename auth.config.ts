@@ -4,6 +4,10 @@ export const authConfig = {
   pages: {
     signIn: "/login",
   },
+  trustedHosts: [
+    "workout-tracker-v4o4.onrender.com",
+    "https://workout-tracker-v4o4.onrender.com"
+  ],
   callbacks: {
     
   },
