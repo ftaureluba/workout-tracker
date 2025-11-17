@@ -9,6 +9,7 @@ import RoutineEditor from "@/app/components/routine-editor";
 import { Button } from "../ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/ui/card";
 import { Menu, User, Plus, Dumbbell, Edit3 } from "lucide-react";
+import { useSidebar } from "@/lib/sidebar";
 
 interface DashboardClientProps {
   workouts: Workout[];
@@ -17,6 +18,7 @@ interface DashboardClientProps {
 
 export function DashboardClient({ workouts: serverWorkouts }: DashboardClientProps) {
   const router = useRouter();
+  const { toggle: _toggleSidebar } = useSidebar();
   const [workouts, setWorkouts] = useState<Workout[]>(serverWorkouts);
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [isOnline, setIsOnline] = useState(true);
@@ -174,15 +176,27 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
     <div className="min-h-screen">
       <header className="w-full border-b bg-card/30 backdrop-blur-sm">
         <div className="flex items-center justify-between p-4">
-          <Button variant="ghost" size="icon" className="h-10 w-10">
-            <Menu className="h-6 w-6" />
-          </Button>
+          {/* Sidebar toggle */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10"
+              onClick={() => _toggleSidebar()}
+              aria-label="Toggle sidebar"
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+            <div className="hidden sm:block text-lg font-semibold">Dashboard</div>
+          </div>
 
           <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
             <User className="h-6 w-6" />
           </Button>
         </div>
       </header>
+
+      {/* Sidebar is provided globally via SidebarProvider and rendered in layout */}
 
       {/* Main Content */}
       <main className="p-4 pb-24 max-w-4xl mx-auto">

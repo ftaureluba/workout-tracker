@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { getWorkoutFromCache, saveActiveSession, queueSync, deleteActiveSession } from "@/lib/indexdb";
 import ExercisePicker from '@/app/components/exercise-picker';
+import { Button } from '@/app/ui/button';
+import { Menu } from 'lucide-react';
+import { useSidebar } from '@/lib/sidebar';
 import { useRouter } from "next/navigation";
 import type { Workout, WorkoutExercise, ActiveSession } from "@/lib/types";
 
@@ -15,6 +18,7 @@ type WorkoutLike =
   | ({ name: string; exercises: { name: string; sets?: { reps: number; weight: number }[] }[] });
 
 export default function WorkoutClient({ workoutId }: Props) {
+  const { toggle: toggleSidebar } = useSidebar();
   const [workout, setWorkout] = useState<WorkoutLike | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -377,12 +381,28 @@ export default function WorkoutClient({ workoutId }: Props) {
 
   return (
     <>
+    <header className="w-full border-b bg-card/30 backdrop-blur-sm">
+      <div className="flex items-center justify-between p-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => toggleSidebar()}
+          aria-label="Toggle sidebar"
+        >
+          <Menu className="h-6 w-6" />
+        </Button>
+        <h1 className="text-2xl font-bold mb-4 text-center">{((workout as Record<string, unknown>)['name'] as string) ?? (workout as Workout).name}</h1>
+      
+
+        <div />
+      </div>
+    </header>
     <main className="p-4 max-w-md mx-auto w-full">
       <div className="flex justify-end mb-3">
         <button onClick={() => setPickerOpen(true)} className="px-3 py-1 bg-blue-600 text-white rounded">+ Add exercise</button>
       </div>
-      <h1 className="text-2xl font-bold mb-4 text-center">{((workout as Record<string, unknown>)['name'] as string) ?? (workout as Workout).name}</h1>
-      <div className="space-y-6">
+     <div className="space-y-6">
         {editableExercises.map((exercise, idx) => (
           <section key={idx} className="bg-muted/50 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
