@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
 const pwaConfig = withPWA({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
+  // Use a custom service worker source so we can include push handlers
+  swSrc: 'src/service-worker.js',
+  register: true,
 });
 
 // Cast nextConfig to any to bypass the type checking

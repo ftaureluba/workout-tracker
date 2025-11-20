@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { getWorkoutFromCache, saveActiveSession, queueSync, deleteActiveSession } from "@/lib/indexdb";
 import ExercisePicker from '@/app/components/exercise-picker';
+import RestTimer from '@/app/components/rest-timer';
+import { useToast } from '@/app/ui/use-toast';
+import { subscribeToPush, getExistingSubscription, unsubscribePush, requestNotificationPermission } from '@/lib/push';
 import { Button } from '@/app/ui/button';
 import { Menu } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebar';
@@ -74,6 +77,21 @@ export default function WorkoutClient({ workoutId }: Props) {
 
   // Exercise picker modal open state
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { toast } = useToast();
+  const [pushEnabled, setPushEnabled] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const sub = await getExistingSubscription();
+        if (mounted) setPushEnabled(!!sub);
+      } catch (e) {
+        console.debug('Failed to check subscription', e);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
 
   // Initialize editableExercises when workout (normalizedExercises) changes
   useEffect(() => {
@@ -400,7 +418,86 @@ export default function WorkoutClient({ workoutId }: Props) {
     </header>
     <main className="p-4 max-w-md mx-auto w-full">
       <div className="flex justify-end mb-3">
-        <button onClick={() => setPickerOpen(true)} className="px-3 py-1 bg-blue-600 text-white rounded">+ Add exercise</button>
+        <button onClick={() => setPickerOpen(true)} className="px-3 py-1 bg-blue-600 text-white rounded mr-2">+ Add exercise</button>
+        <button
+          onClick={async () => {
+            try {
+              // request permission
+              if ('Notification' in window) {
+                const perm = await Notification.requestPermission();
+                if (perm !== 'granted') {
+                  toast({ title: 'Notifications blocked', description: 'Permission not granted' });
+                  return;
+                }
+              }
+
+              toast({ title: 'Demo timer started', description: 'Will notify in 5 seconds' });
+
+              // schedule demo notification in 5s
+              setTimeout(async () => {
+                try {
+                  // Try to show via service worker (better when backgrounded)
+                  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    const reg = await navigator.serviceWorker.ready;
+                    await reg.showNotification('Demo timer', { body: '5 seconds are up', icon: '/icons/icon-192x192.png' });
+                  } else if ('Notification' in window) {
+                    new Notification('Demo timer', { body: '5 seconds are up', icon: '/icons/icon-192x192.png' });
+                  }
+                  toast({ title: 'Demo timer finished', description: 'Notification sent' });
+                } catch (err) {
+                  console.error('Demo notify failed', err);
+                  toast({ title: 'Demo failed', description: String(err) });
+                }
+              }, 5000);
+            } catch (err) {
+              console.error('Test timer failed', err);
+              toast({ title: 'Error', description: 'Failed to start demo timer' });
+            }
+          }}
+          className="px-3 py-1 bg-indigo-600 text-white rounded"
+        >
+          Test timer
+        </button>
+        <button
+          onClick={async () => {
+            try {
+              if (!pushEnabled) {
+                // enable: request permission then subscribe
+                const perm = await requestNotificationPermission();
+                if (perm !== 'granted') {
+                  toast({ title: 'Notifications blocked', description: 'Permission not granted' });
+                  return;
+                }
+                const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string | undefined;
+                if (!vapidKey) {
+                  toast({ title: 'VAPID missing', description: 'Set NEXT_PUBLIC_VAPID_PUBLIC_KEY in env' });
+                  return;
+                }
+                const sub = await subscribeToPush(vapidKey);
+                if (sub) {
+                  toast({ title: 'Subscribed to push', description: 'Push enabled' });
+                  setPushEnabled(true);
+                } else {
+                  toast({ title: 'Subscribe failed', description: 'Could not subscribe to PushManager' });
+                }
+              } else {
+                const ok = await unsubscribePush();
+                if (ok) {
+                  toast({ title: 'Unsubscribed', description: 'Push disabled' });
+                  setPushEnabled(false);
+                } else {
+                  toast({ title: 'Unsubscribe failed', description: 'Could not unsubscribe' });
+                }
+              }
+            } catch (err) {
+              console.error('Toggle push failed', err);
+              toast({ title: 'Error', description: 'Failed to toggle push' });
+            }
+          }}
+          className="ml-3 px-3 py-1 bg-gray-800 text-white rounded"
+        >
+          {pushEnabled ? 'Disable push' : 'Enable push'}
+        </button>
       </div>
      <div className="space-y-6">
         {editableExercises.map((exercise, idx) => (
@@ -442,6 +539,7 @@ export default function WorkoutClient({ workoutId }: Props) {
                         placeholder={typeof set.weight === 'number' ? String(set.weight) : ''}
                       />
                       <span className="text-sm text-muted-foreground">kg</span>
+                    
                     </div>
                   </div>
                 ))
@@ -468,7 +566,9 @@ export default function WorkoutClient({ workoutId }: Props) {
     />
 
     <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
-      <button onClick={handleEndWorkout} className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg">End Workout</button>
+      <button onClick={handleEndWorkout} 
+      style={{'backgroundColor' : "#1C6E8C"}}
+      className="w-full h-12 text-white font-semibold rounded-lg">End Workout</button>
     </div>
     </>
   );
