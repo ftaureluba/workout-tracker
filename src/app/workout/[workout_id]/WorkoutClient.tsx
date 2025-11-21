@@ -79,6 +79,7 @@ export default function WorkoutClient({ workoutId }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { toast } = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [testTimerRunning, setTestTimerRunning] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -430,8 +431,8 @@ export default function WorkoutClient({ workoutId }: Props) {
                   return;
                 }
               }
-
               toast({ title: 'Demo timer started', description: 'Will notify in 5 seconds' });
+              setTestTimerRunning(true);
 
               // schedule demo notification in 5s
               setTimeout(async () => {
@@ -444,9 +445,11 @@ export default function WorkoutClient({ workoutId }: Props) {
                     new Notification('Demo timer', { body: '5 seconds are up', icon: '/icons/icon-192x192.png' });
                   }
                   toast({ title: 'Demo timer finished', description: 'Notification sent' });
+                  setTestTimerRunning(false);
                 } catch (err) {
                   console.error('Demo notify failed', err);
                   toast({ title: 'Demo failed', description: String(err) });
+                  setTestTimerRunning(false);
                 }
               }, 5000);
             } catch (err) {
@@ -454,7 +457,7 @@ export default function WorkoutClient({ workoutId }: Props) {
               toast({ title: 'Error', description: 'Failed to start demo timer' });
             }
           }}
-          className="px-3 py-1 bg-indigo-600 text-white rounded"
+          className={"px-3 py-1 text-white rounded " + (testTimerRunning ? 'bg-green-600' : 'bg-indigo-600')}
         >
           Test timer
         </button>
