@@ -482,7 +482,14 @@ export default function WorkoutClient({ workoutId }: Props) {
                 }
                 const sub = await subscribeToPush(vapidKey);
                 if (sub) {
-                  toast({ title: 'Subscribed to push', description: 'Push enabled' });
+                  // Send subscription to server for debugging/persistence
+                  try {
+                    await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }) });
+                    toast({ title: 'Subscribed to push', description: 'Push enabled and sent to server' });
+                  } catch (e) {
+                    console.error('Failed to send subscription to server', e);
+                    toast({ title: 'Subscribed locally', description: 'Subscription obtained but failed to POST to server' });
+                  }
                   setPushEnabled(true);
                 } else {
                   toast({ title: 'Subscribe failed', description: 'Could not subscribe to PushManager' });

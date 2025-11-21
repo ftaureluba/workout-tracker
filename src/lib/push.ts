@@ -6,24 +6,57 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubscription | null> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
-  const reg = await navigator.serviceWorker.ready;
+  console.debug('subscribeToPush: start', { hasSW: 'serviceWorker' in navigator, hasPush: 'PushManager' in window });
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.debug('subscribeToPush: not supported in this browser');
+    return null;
+  }
+
   try {
+    // Ensure a service worker is registered and ready. Some setups rely on auto-registration but
+    // calling register explicitly helps surface errors and ensures controller is present.
+    if (!navigator.serviceWorker.controller) {
+      console.debug('subscribeToPush: no controller, attempting to register /sw.js manually');
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+        console.debug('subscribeToPush: manual registration succeeded');
+      } catch (regErr) {
+        console.warn('subscribeToPush: manual SW registration failed', regErr);
+        // continue to navigator.serviceWorker.ready which may still resolve
+      }
+    }
+
+    const reg = await navigator.serviceWorker.ready;
+    console.debug('subscribeToPush: service worker ready', reg);
+
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
+
+    console.debug('subscribeToPush: subscription successful', sub);
     return sub;
   } catch (err) {
-    console.error('Failed to subscribe to push', err);
-    return null;
+    console.error('subscribeToPush: Failed to subscribe to push', err);
+    throw err;
   }
 }
 
 export async function getExistingSubscription(): Promise<PushSubscription | null> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
-  const reg = await navigator.serviceWorker.ready;
-  return reg.pushManager.getSubscription();
+  console.debug('getExistingSubscription: checking existing subscription');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.debug('getExistingSubscription: not supported');
+    return null;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    console.debug('getExistingSubscription: result', sub);
+    return sub;
+  } catch (err) {
+    console.error('getExistingSubscription: error', err);
+    return null;
+  }
 }
 
 export async function unsubscribePush(): Promise<boolean> {
