@@ -13,8 +13,26 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubsc
   }
 
   try {
-    // Ensure a service worker is registered and ready. Some setups rely on auto-registration but
-    // calling register explicitly helps surface errors and ensures controller is present.
+    // Quick check: avoid attempting to register a service worker if the file isn't present.
+    // In dev builds or misconfigured deployments `/sw.js` may 404 which triggers
+    // workbox precache errors like `bad-precaching-response`. Fetching first lets us
+    // bail early and keep the subscribe flow controllable.
+    try {
+      const resp = await fetch('/sw.js', { method: 'GET', cache: 'no-store' });
+      if (!resp.ok) {
+        console.debug('subscribeToPush: /sw.js not found (status ' + resp.status + '), skipping registration');
+        // If there's already an active registration, we can still try to use it.
+        const existing = await navigator.serviceWorker.getRegistration();
+        if (!existing) return null;
+      }
+    } catch (fetchErr) {
+      console.debug('subscribeToPush: fetch /sw.js failed', fetchErr);
+      // Don't proceed to register if we can't fetch the file; try to use any existing registration
+      const existing = await navigator.serviceWorker.getRegistration();
+      if (!existing) return null;
+    }
+
+    // Attempt manual registration only when there's no controller and the file exists.
     if (!navigator.serviceWorker.controller) {
       console.debug('subscribeToPush: no controller, attempting to register /sw.js manually');
       try {
@@ -22,23 +40,49 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubsc
         console.debug('subscribeToPush: manual registration succeeded');
       } catch (regErr) {
         console.warn('subscribeToPush: manual SW registration failed', regErr);
-        // continue to navigator.serviceWorker.ready which may still resolve
+        // continue - we'll try to locate an existing registration below
       }
     }
 
-    const reg = await navigator.serviceWorker.ready;
-    console.debug('subscribeToPush: service worker ready', reg);
+    // Wait for the SW to be ready but avoid hanging forever in environments where the SW
+    // never reaches 'activated'. Use a sensible timeout and fall back to getRegistration.
+    const readyPromise = navigator.serviceWorker.ready;
+    const timeoutMs = 5000;
+    let reg: ServiceWorkerRegistration | null = null;
+    try {
+      reg = await Promise.race([
+        readyPromise,
+        new Promise<ServiceWorkerRegistration | null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+      ]);
+    } catch (readyErr) {
+      console.warn('subscribeToPush: navigator.serviceWorker.ready rejected', readyErr);
+      reg = null;
+    }
 
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-    });
+    if (!reg) {
+      console.debug('subscribeToPush: ready timed out or not available, trying getRegistration()');
+      reg = (await navigator.serviceWorker.getRegistration('/sw.js')) || (await navigator.serviceWorker.getRegistration()) || null;
+    }
 
-    console.debug('subscribeToPush: subscription successful', sub);
-    return sub;
+    if (!reg) {
+      console.debug('subscribeToPush: no service worker registration available to subscribe');
+      return null;
+    }
+
+    try {
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+      console.debug('subscribeToPush: subscription successful', sub);
+      return sub;
+    } catch (subscribeErr) {
+      console.error('subscribeToPush: pushManager.subscribe failed', subscribeErr);
+      return null;
+    }
   } catch (err) {
-    console.error('subscribeToPush: Failed to subscribe to push', err);
-    throw err;
+    console.error('subscribeToPush: unexpected error', err);
+    return null;
   }
 }
 
