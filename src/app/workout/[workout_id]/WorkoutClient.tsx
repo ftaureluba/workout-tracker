@@ -5,6 +5,7 @@ import { getWorkoutFromCache, saveActiveSession, queueSync, deleteActiveSession 
 import ExercisePicker from '@/app/components/exercise-picker';
 import RestTimer from '@/app/components/rest-timer';
 import { useToast } from '@/app/ui/use-toast';
+import PushStatus from '@/app/components/push-status';
 import { subscribeToPush, getExistingSubscription, unsubscribePush, requestNotificationPermission } from '@/lib/push';
 import { Button } from '@/app/ui/button';
 import { Menu } from 'lucide-react';
@@ -461,6 +462,9 @@ export default function WorkoutClient({ workoutId }: Props) {
         >
           Test timer
         </button>
+        <div className="ml-4">
+          <PushStatus />
+        </div>
         <button
           onClick={async () => {
             try {

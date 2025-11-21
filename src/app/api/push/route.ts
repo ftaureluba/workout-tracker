@@ -29,20 +29,27 @@ export async function POST(req: NextRequest) {
 
     const send = async () => {
       try {
-        await webpush.sendNotification(subscription, payload);
+        const result = await webpush.sendNotification(subscription, payload);
+        console.info('web-push send result', result);
+        return { ok: true, result };
       } catch (err) {
         console.error('web-push send failed', err);
+        return { ok: false, error: String(err) };
       }
     };
 
     if (delayMs && typeof delayMs === 'number' && delayMs > 0) {
       // Best-effort scheduling using setTimeout. Not reliable on serverless platforms.
-      setTimeout(send, delayMs);
+      setTimeout(async () => {
+        const r = await send();
+        console.info('delayed push send result', r);
+      }, delayMs);
       return NextResponse.json({ ok: true, scheduled: true });
     }
 
-    await send();
-    return NextResponse.json({ ok: true });
+    const sendResult = await send();
+    if (sendResult.ok) return NextResponse.json({ ok: true, result: sendResult.result });
+    return NextResponse.json({ ok: false, error: sendResult.error }, { status: 500 });
   } catch (err) {
     console.error('Push API error', err);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

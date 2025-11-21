@@ -3,6 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { SidebarProvider } from "@/lib/sidebar";
 import Sidebar from "./components/sidebar";
+import { Toaster } from "@/app/ui/toaster";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +11,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <SidebarProvider>
         <Sidebar />
         {children}
+        {/* Global toaster for in-app toasts created with useToast() */}
+        <Toaster />
       </SidebarProvider>
     </SessionProvider>
   );
