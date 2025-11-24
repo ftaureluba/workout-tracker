@@ -492,7 +492,7 @@ export default function WorkoutClient({ workoutId }: Props) {
                   }
                   setPushEnabled(true);
                 } else {
-                  toast({ title: 'Subscribe failed', description: 'Service worker not available or registration failed — check browser console for details' });
+                  toast({ title: 'Subscribe failed', description: 'Service worker not available or registration failed. In development this is expected — run a production build (`npm run build && npm run start`) or test the deployed site and check the browser console for details.' });
                 }
               } else {
                 const ok = await unsubscribePush();

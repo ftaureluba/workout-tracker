@@ -17,30 +17,45 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubsc
     // In dev builds or misconfigured deployments `/sw.js` may 404 which triggers
     // workbox precache errors like `bad-precaching-response`. Fetching first lets us
     // bail early and keep the subscribe flow controllable.
+    // Detect localhost/dev to avoid registering a production SW that includes
+    // a precache manifest (which will 404 in dev and throw `bad-precaching-response`).
+    const isLocalhost = typeof location !== 'undefined' && (
+      location.hostname === 'localhost' ||
+      location.hostname === '127.0.0.1' ||
+      location.hostname.endsWith('.local')
+    );
+
+    let swExists = false;
     try {
       const resp = await fetch('/sw.js', { method: 'GET', cache: 'no-store' });
+      swExists = resp.ok;
       if (!resp.ok) {
         console.debug('subscribeToPush: /sw.js not found (status ' + resp.status + '), skipping registration');
-        // If there's already an active registration, we can still try to use it.
         const existing = await navigator.serviceWorker.getRegistration();
         if (!existing) return null;
       }
     } catch (fetchErr) {
       console.debug('subscribeToPush: fetch /sw.js failed', fetchErr);
-      // Don't proceed to register if we can't fetch the file; try to use any existing registration
       const existing = await navigator.serviceWorker.getRegistration();
       if (!existing) return null;
     }
 
-    // Attempt manual registration only when there's no controller and the file exists.
+    // Attempt manual registration only when there's no controller, the file exists,
+    // and we're not running on localhost/dev (to avoid precache 404s during dev).
     if (!navigator.serviceWorker.controller) {
-      console.debug('subscribeToPush: no controller, attempting to register /sw.js manually');
-      try {
-        await navigator.serviceWorker.register('/sw.js');
-        console.debug('subscribeToPush: manual registration succeeded');
-      } catch (regErr) {
-        console.warn('subscribeToPush: manual SW registration failed', regErr);
-        // continue - we'll try to locate an existing registration below
+      if (!swExists) {
+        console.debug('subscribeToPush: no /sw.js to register and no controller, aborting');
+      } else if (isLocalhost) {
+        console.debug('subscribeToPush: running on localhost — skipping manual SW registration to avoid dev precache issues');
+      } else {
+        console.debug('subscribeToPush: no controller, attempting to register /sw.js manually');
+        try {
+          await navigator.serviceWorker.register('/sw.js');
+          console.debug('subscribeToPush: manual registration succeeded');
+        } catch (regErr) {
+          console.warn('subscribeToPush: manual SW registration failed', regErr);
+          // continue - we'll try to locate an existing registration below
+        }
       }
     }
 
