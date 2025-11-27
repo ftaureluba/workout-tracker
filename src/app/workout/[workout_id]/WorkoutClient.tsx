@@ -5,7 +5,6 @@ import { getWorkoutFromCache, saveActiveSession, queueSync, deleteActiveSession 
 import ExercisePicker from '@/app/components/exercise-picker';
 import RestTimer from '@/app/components/rest-timer';
 import { useToast } from '@/app/ui/use-toast';
-import PushStatus from '@/app/components/push-status';
 import { subscribeToPush, getExistingSubscription, unsubscribePush, requestNotificationPermission } from '@/lib/push';
 import { Button } from '@/app/ui/button';
 import { Menu } from 'lucide-react';
@@ -80,7 +79,6 @@ export default function WorkoutClient({ workoutId }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { toast } = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [testTimerRunning, setTestTimerRunning] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -88,8 +86,8 @@ export default function WorkoutClient({ workoutId }: Props) {
       try {
         const sub = await getExistingSubscription();
         if (mounted) setPushEnabled(!!sub);
-      } catch (e) {
-        console.debug('Failed to check subscription', e);
+      } catch {
+        // ignore
       }
     })();
     return () => { mounted = false };
@@ -127,9 +125,8 @@ export default function WorkoutClient({ workoutId }: Props) {
                 const data = await res.json();
                 if (mounted) setWorkout(data as WorkoutLike);
               }
-            } catch (e) {
+            } catch {
               // network fetch failed, keep cached value if any
-              console.debug("Network fetch failed for workout", e);
             }
           } else {
             // cached present -> intentionally skip network call
@@ -387,8 +384,8 @@ export default function WorkoutClient({ workoutId }: Props) {
       // Remove the active session entry now that the workout is finished
       try {
         await deleteActiveSession(session.sessionId);
-      } catch (e) {
-        console.debug('Failed to delete active session locally', e);
+      } catch {
+        // ignore deletion error
       }
 
       // navigate back to dashboard after finishing
@@ -421,50 +418,7 @@ export default function WorkoutClient({ workoutId }: Props) {
     <main className="p-4 max-w-md mx-auto w-full">
       <div className="flex justify-end mb-3">
         <button onClick={() => setPickerOpen(true)} className="px-3 py-1 bg-blue-600 text-white rounded mr-2">+ Add exercise</button>
-        <button
-          onClick={async () => {
-            try {
-              // request permission
-              if ('Notification' in window) {
-                const perm = await Notification.requestPermission();
-                if (perm !== 'granted') {
-                  toast({ title: 'Notifications blocked', description: 'Permission not granted' });
-                  return;
-                }
-              }
-              toast({ title: 'Demo timer started', description: 'Will notify in 5 seconds' });
-              setTestTimerRunning(true);
-
-              // schedule demo notification in 5s
-              setTimeout(async () => {
-                try {
-                  // Try to show via service worker (better when backgrounded)
-                  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    const reg = await navigator.serviceWorker.ready;
-                    await reg.showNotification('Demo timer', { body: '5 seconds are up', icon: '/icons/icon-192x192.png' });
-                  } else if ('Notification' in window) {
-                    new Notification('Demo timer', { body: '5 seconds are up', icon: '/icons/icon-192x192.png' });
-                  }
-                  toast({ title: 'Demo timer finished', description: 'Notification sent' });
-                  setTestTimerRunning(false);
-                } catch (err) {
-                  console.error('Demo notify failed', err);
-                  toast({ title: 'Demo failed', description: String(err) });
-                  setTestTimerRunning(false);
-                }
-              }, 5000);
-            } catch (err) {
-              console.error('Test timer failed', err);
-              toast({ title: 'Error', description: 'Failed to start demo timer' });
-            }
-          }}
-          className={"px-3 py-1 text-white rounded " + (testTimerRunning ? 'bg-green-600' : 'bg-indigo-600')}
-        >
-          Test timer
-        </button>
-        <div className="ml-4">
-          <PushStatus />
-        </div>
+        
         <button
           onClick={async () => {
             try {
@@ -492,7 +446,38 @@ export default function WorkoutClient({ workoutId }: Props) {
                   }
                   setPushEnabled(true);
                 } else {
-                  toast({ title: 'Subscribe failed', description: 'Service worker not available or registration failed. In development this is expected — run a production build (`npm run build && npm run start`) or test the deployed site and check the browser console for details.' });
+                  // Run diagnostics to give clearer feedback to the user
+                  try {
+                    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                      toast({ title: 'Subscribe failed', description: 'Push or Service Worker APIs are not supported by this browser.' });
+                    } else {
+                      // Check /sw.js availability
+                      let swResp: Response | null = null;
+                      try {
+                        swResp = await fetch('/sw.js', { method: 'GET', cache: 'no-store' });
+                      } catch (e) {
+                        swResp = null;
+                      }
+
+                      if (!swResp || !swResp.ok) {
+                        toast({ title: 'Subscribe failed', description: '/sw.js not reachable (HTTP ' + (swResp ? swResp.status : 'network') + '). Ensure the service worker is deployed.' });
+                        console.error('Push subscribe diagnostic: /sw.js fetch result', swResp);
+                      } else {
+                        const registration = await navigator.serviceWorker.getRegistration();
+                        const permission = ('Notification' in window) ? Notification.permission : 'unsupported';
+                        if (!registration) {
+                          toast({ title: 'Subscribe failed', description: 'Service worker not registered. Try reloading the page.' });
+                          console.error('Push subscribe diagnostic: no service worker registration');
+                        } else {
+                          toast({ title: 'Subscribe failed', description: `Subscription attempt failed. Notification permission: ${permission}. Check browser console for errors.` });
+                          console.error('Push subscribe diagnostic: registration present, but subscribe() returned null or failed');
+                        }
+                      }
+                    }
+                  } catch (diagErr) {
+                    console.error('Subscribe diagnostics error', diagErr);
+                    toast({ title: 'Subscribe failed', description: 'Unknown error during diagnostics — check console.' });
+                  }
                 }
               } else {
                 const ok = await unsubscribePush();
@@ -554,6 +539,9 @@ export default function WorkoutClient({ workoutId }: Props) {
                       />
                       <span className="text-sm text-muted-foreground">kg</span>
                     
+                    </div>
+                    <div className="ml-4">
+                      <RestTimer defaultSeconds={60} label={`Rest ${setIdx + 1}`} />
                     </div>
                   </div>
                 ))

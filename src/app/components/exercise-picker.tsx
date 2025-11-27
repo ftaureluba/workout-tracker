@@ -23,8 +23,8 @@ export default function ExercisePicker({ isOpen, onClose, onSelect }: Props) {
         if (!res.ok) return;
         const data = await res.json();
         if (mounted) setExercises(data || []);
-      } catch (e) {
-        console.debug("Failed to load exercises", e);
+      } catch {
+        // ignore load error
       }
     })();
     return () => {
