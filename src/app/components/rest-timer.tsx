@@ -64,8 +64,8 @@ export default function RestTimer({ defaultSeconds = 60, label = 'Rest' }: Props
       }
 
       if (subscription) {
-        // Ask server to schedule a push for `secs` from now. Server will use delayMs to schedule.
-        await fetch('/api/push', {
+        // Ask server to schedule a push for `secs` from now. Server will persist the schedule.
+        await fetch('/api/push/schedule', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ subscription, title: `${label} finished`, body: 'Your rest period is over', delayMs: secs * 1000 }),

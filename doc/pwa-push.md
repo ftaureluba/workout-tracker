@@ -53,3 +53,34 @@ Notes for improvement
 - Persist subscriptions server-side (POST to a dedicated /api/subscribe) and keep them associated with a user to schedule pushes reliably.
 - Replace the demo `setTimeout` scheduling with a queue/worker (Redis queue, cron, or background process).
 - Improve UX: show subscription status in settings, allow selecting default rest durations per workout, and show countdown in the site's UI overlay.
+
+
+Persistence & running a reliable sender (Postgres + Vercel Cron)
+
+- This project now includes a Postgres-backed approach using Drizzle ORM:
+   - `POST /api/push/subscribe` persists subscriptions to the `push_subscriptions` table.
+   - `POST /api/push/schedule` persists schedules to the `push_schedules` table with columns `{ userId, subscription, fireAt, sent }`.
+   - Instead of a local worker, use a Vercel Cron job to `POST /api/push/run` every minute. That route will:
+      - select schedules where `fireAt <= now()` and `sent = false`,
+      - send web-push messages, and
+      - mark rows as `sent`.
+
+- On Vercel: add the environment variables `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and optionally `PUSH_CRON_SECRET`.
+   - Configure a Vercel Cron job (or Cron Jobs feature) to POST to `https://<your-deployment>/api/push/run` every minute.
+   - If `PUSH_CRON_SECRET` is set, include an HTTP header `x-push-cron-secret: <value>` (or `x-vercel-cron-secret`) in the cron job request for simple protection.
+
+Example Vercel Cron request (curl):
+
+```bash
+PUSH_CRON_SECRET=...
+curl -X POST -H "x-push-cron-secret: $PUSH_CRON_SECRET" https://your-deployment.vercel.app/api/push/run
+```
+
+Why `console.log(NEXT_PUBLIC_VAPID_PUBLIC_KEY)` in the browser console didn't work
+
+- Environment variables like `NEXT_PUBLIC_*` are injected at build time into your application's client bundles — they are not automatically created as global variables you can reference from the browser console. When you write `console.log(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)` in client code, the build replaces that token with the actual string value.
+- Running `console.log(NEXT_PUBLIC_VAPID_PUBLIC_KEY)` directly in the browser console will raise ReferenceError because no global named `NEXT_PUBLIC_VAPID_PUBLIC_KEY` exists at runtime. To inspect the value from the browser:
+   - Add a temporary `console.log(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)` in client code and rebuild, or
+   - Expose it via a small `/api/debug/vapid` route that returns the value (only enable in development), or
+   - Inspect the compiled JS bundle (not recommended).
+

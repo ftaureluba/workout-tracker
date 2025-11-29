@@ -163,3 +163,22 @@ export const workoutSetRelations = relations(workoutSet, ({ one }) => ({
     references: [sessionExercises.id],
   }),
 }));
+
+// Push schedules table: stores scheduled web-push messages
+export const pushSchedules = pgTable('push_schedules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  subscription: text('subscription').notNull(), // JSON stringified subscription
+  fireAt: timestamp('fire_at').notNull(),
+  sent: boolean('sent').default(false).notNull(),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+});
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  endpoint: text('endpoint').notNull().unique(),
+  subscription: text('subscription').notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+});
