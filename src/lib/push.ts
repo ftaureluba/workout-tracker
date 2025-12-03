@@ -131,3 +131,29 @@ function urlBase64ToUint8Array(base64String: string) {
   }
   return outputArray;
 }
+
+// Listen for forwarded push messages from the service worker. When the SW
+// receives a push while a visible client exists it will `postMessage` the
+// payload here. We show an in-page Notification (only when visible and
+// permission is granted) so users still get a prompt without the SW also
+// showing a notification.
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  try {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (!msg || msg.type !== 'push' || !msg.data) return;
+      if (document.visibilityState !== 'visible') return;
+      if (Notification.permission !== 'granted') return;
+      try {
+        const d = msg.data;
+        const title = d.title || 'Timer';
+        const opts = Object.assign({ body: d.body || '', icon: d.icon || '/icons/icon-192x192.png' }, d.options || {});
+        new Notification(title, opts);
+      } catch (err) {
+        // ignore
+      }
+    });
+  } catch (e) {
+    // ignore
+  }
+}

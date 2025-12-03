@@ -29,7 +29,26 @@ self.addEventListener('push', function(event) {
       vibrate: data.vibrate || [200, 100, 200]
     }, data.options || {});
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    // If any client window is visible, avoid showing a notification from the
+    // service worker to prevent duplicates. Instead, forward the push payload
+    // to the visible clients via `postMessage` so the page can decide how to
+    // present the event (in-page notification, sound, UI update, etc.).
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+        const hasVisible = windowClients.some(c => c.visibilityState === 'visible');
+        if (hasVisible) {
+          for (const client of windowClients) {
+            try {
+              client.postMessage({ type: 'push', data });
+            } catch (e) {
+              // ignore
+            }
+          }
+          return;
+        }
+        return self.registration.showNotification(title, options);
+      })
+    );
   } catch (err) {
     console.error('Error handling push event', err);
   }
