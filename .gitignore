@@ -49,3 +49,4 @@ GEMINI.md
 *.sql.gz
 *.dump
 
+/msi-ec
