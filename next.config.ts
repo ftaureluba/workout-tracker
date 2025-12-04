@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import withPWA from "next-pwa";
 
-const nextConfig: NextConfig = {
+const nextConfig: any = {
   //output: 'standalone',
   // Temporarily ignore ESLint during build to avoid blocking CI/CD for lint-only issues.
   // Remove this flag once lint/type issues are resolved.
@@ -22,5 +22,14 @@ const pwaConfig = withPWA({
     /react-loadable-manifest\.json$/,]
 });
 
-// Cast nextConfig to any to bypass the type checking
-export default pwaConfig(nextConfig as any);
+// Allow temporarily disabling next-pwa integration during builds for debugging
+// without removing the configuration. Set `DISABLE_NEXT_PWA=true` to skip
+// the `withPWA` wrapper (useful for CI or local debugging).
+let exportedConfig: any;
+if (process.env.DISABLE_NEXT_PWA === 'true') {
+  exportedConfig = nextConfig;
+} else {
+  exportedConfig = pwaConfig(nextConfig as any);
+}
+
+export default exportedConfig;
