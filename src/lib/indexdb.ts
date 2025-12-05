@@ -49,6 +49,8 @@ export async function saveWorkoutsToCache(workouts: Workout[]): Promise<void>{
 }
 
 export async function getWorkoutFromCache(workoutId: string): Promise<Workout | undefined> {
+  if (!workoutId) return undefined;
+  
   const db = await initDB();
   const tx = db.transaction(STORES.WORKOUTS, "readonly");
   const store = tx.objectStore(STORES.WORKOUTS);
@@ -103,6 +105,8 @@ export async function saveActiveSession(session: ActiveSession): Promise<void> {
 }
 
 export async function getActiveSession(sessionId: string): Promise<ActiveSession | undefined> {
+  if (!sessionId) return undefined;
+  
   const db = await initDB();
   const tx = db.transaction(STORES.ACTIVE_SESSIONS, "readonly");
   const store = tx.objectStore(STORES.ACTIVE_SESSIONS);
