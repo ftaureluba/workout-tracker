@@ -38,6 +38,7 @@
   --sidebar-border: oklch(0.9220 0 0);
   --sidebar-ring: oklch(0.7080 0 0);
   --background-image: url("https://www.transparenttextures.com/patterns/cartographer.png");
+  --timer-image: url("https://www.transparenttextures.com/patterns/dark-mosaic.png");;
 
 }
 
@@ -173,6 +174,10 @@
 @layer utilities {
   .bg-texture {
     background-image: var(--background-image);
+    background-repeat: repeat;
+  }
+  .timer-texture{
+    background-image: var(--timer-image);
     background-repeat: repeat;
   }
 }
