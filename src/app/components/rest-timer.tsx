@@ -250,7 +250,7 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
             {/* Time display in center */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                {!running && (editingMinutes || editingSeconds) ? (
+                {!running ? (
                   <div className="flex items-center gap-1">
                     {editingMinutes ? (
                       <input
@@ -289,17 +289,7 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
                     )}
                   </div>
                 ) : (
-                  <button
-                    onClick={
-                      !running
-                        ? () => {
-                            setEditingMinutes(true)
-                            setTempMinutes(Math.floor(seconds / 60).toString())
-                          }
-                        : undefined
-                    }
-                    className="text-5xl font-bold text-white"
-                  >
+                  <button className="text-5xl font-bold text-white">
                     {String(displayMinutes).padStart(2, "0")}:{String(displaySeconds).padStart(2, "0")}
                   </button>
                 )}
