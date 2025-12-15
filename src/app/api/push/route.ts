@@ -1,57 +1,60 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import webpush from 'web-push';
+import { scheduleNotificationDurable } from '@/lib/durable-push';
 
-// Server-side push sender. Expects JSON POST with shape:
-// { subscription: PushSubscription, title?: string, body?: string, delayMs?: number }
-
-const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
-
-if (VAPID_PUBLIC && VAPID_PRIVATE) {
-  webpush.setVapidDetails(
-    'mailto:admin@example.com',
-    VAPID_PUBLIC,
-    VAPID_PRIVATE
-  );
-}
-
+/**
+ * POST /api/push
+ * 
+ * Immediate or delayed push notification via Durable Objects.
+ * This endpoint now delegates to the event-driven Durable Objects system.
+ * 
+ * Request body:
+ * {
+ *   subscription: PushSubscription,
+ *   title?: string,
+ *   body?: string,
+ *   delayMs?: number,
+ *   userId?: string
+ * }
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { subscription, title = 'Timer', body: message = 'Time is up', delayMs = 0 } = body;
+    const { subscription, title = 'Timer', body: message = 'Time is up', delayMs = 0, userId } = body;
 
     if (!subscription) {
       return NextResponse.json({ error: 'Missing subscription' }, { status: 400 });
     }
 
-    const payload = JSON.stringify({ title, body: message });
+    const now = Date.now();
+    const fireAt = now + (Number(delayMs) || 0);
 
-    const send = async () => {
-      try {
-        const result = await webpush.sendNotification(subscription, payload);
-        console.info('web-push send result', result);
-        return { ok: true, result };
-      } catch (err) {
-        console.error('web-push send failed', err);
-        return { ok: false, error: String(err) };
-      }
-    };
+    // Get the Durable Objects URL from environment
+    const durableObjectUrl = process.env.DURABLE_OBJECTS_URL || 'http://localhost:8787';
 
-    if (delayMs && typeof delayMs === 'number' && delayMs > 0) {
-      // Best-effort scheduling using setTimeout. Not reliable on serverless platforms.
-      setTimeout(async () => {
-        const r = await send();
-        console.info('delayed push send result', r);
-      }, delayMs);
-      return NextResponse.json({ ok: true, scheduled: true });
+    // Use Durable Objects for scheduling (even immediate sends)
+    const result = await scheduleNotificationDurable(
+      {
+        subscription,
+        fireAt,
+        title,
+        body: message,
+        userId,
+      },
+      durableObjectUrl
+    );
+
+    if (!result.ok) {
+      return NextResponse.json({ ok: false, error: result.error || 'Failed to schedule' }, { status: 500 });
     }
 
-    const sendResult = await send();
-    if (sendResult.ok) return NextResponse.json({ ok: true, result: sendResult.result });
-    return NextResponse.json({ ok: false, error: sendResult.error }, { status: 500 });
+    return NextResponse.json({
+      ok: true,
+      scheduled: delayMs > 0,
+      result: { id: result.id },
+    });
   } catch (err) {
     console.error('Push API error', err);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal error', ok: false }, { status: 500 });
   }
 }

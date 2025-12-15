@@ -564,7 +564,7 @@ export default function WorkoutClient({ workoutId }: Props) {
     <ExercisePicker
       isOpen={pickerOpen}
       onClose={() => setPickerOpen(false)}
-  onSelect={(ex: { id: string; name: string }) => { addExercise(ex.id, ex.name); setPickerOpen(false); }}
+      onAddExercise={(ex: { id: string; name: string }) => { addExercise(ex.id, ex.name); setPickerOpen(false); }}
     />
 
     <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">

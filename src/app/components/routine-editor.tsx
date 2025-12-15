@@ -212,7 +212,7 @@ export default function RoutineEditor({ isOpen, onClose, initial, onSaved, onDel
           </div>
         </div>
 
-        <ExercisePicker isOpen={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={handleAddExercise} />
+        <ExercisePicker isOpen={pickerOpen} onClose={() => setPickerOpen(false)} onAddExercise={handleAddExercise} />
       </div>
     </div>
   );

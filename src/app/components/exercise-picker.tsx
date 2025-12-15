@@ -29,7 +29,7 @@ type Exercise = {
 interface ExercisePickerProps {
   isOpen: boolean
   onClose: () => void
-  onAddExercise: (exerciseId: string) => void
+  onAddExercise: (exercise: { id: string; name: string }) => void
 }
 
 export default function ExercisePicker({ isOpen, onClose, onAddExercise }: ExercisePickerProps) {
@@ -144,8 +144,8 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
     })
   }, [searchQuery, selectedBodyParts, selectedEquipment, selectedMovementType, selectedMovementPattern, exercises])
 
-  const handleAddExercise = (exerciseId: string) => {
-    onAddExercise(exerciseId)
+  const handleAddExercise = (exercise: { id: string; name: string }) => {
+    onAddExercise(exercise)
     onClose()
   }
 
@@ -364,7 +364,7 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => handleAddExercise(exercise.id)}
+                      onClick={() => handleAddExercise({ id: exercise.id, name: exercise.name })}
                       className="opacity-100 group-hover:opacity-100 transition-opacity ml-2"
                     >
                       Add

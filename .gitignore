@@ -50,3 +50,5 @@ GEMINI.md
 *.dump
 
 /msi-ec
+
+*.md

@@ -20,8 +20,8 @@ interface ScheduledNotification {
 }
 
 export class Scheduler extends DurableObject<Env> {
-	private state: DurableObjectState;
-	private env: Env;
+	state: DurableObjectState;
+	env: Env;
 
 	constructor(state: DurableObjectState, env: Env) {
 		super(state, env);
@@ -191,7 +191,8 @@ export class Scheduler extends DurableObject<Env> {
 	 * Get notification status
 	 */
 	async getNotificationStatus(notificationId: string): Promise<ScheduledNotification | null> {
-		return this.state.storage.get<ScheduledNotification>(notificationId) || null;
+		const notification = await this.state.storage.get<ScheduledNotification>(notificationId);
+		return notification ?? null;
 	}
 
 	/**
