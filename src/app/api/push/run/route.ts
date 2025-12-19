@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
 
   try {
     // Get the Durable Objects URL from environment
-    const durableObjectUrl = process.env.DURABLE_OBJECTS_URL || 'http://localhost:8787';
+    const durableObjectUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
+      ? `https://${process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL}`
+      : 'http://localhost:8787';
 
     // List pending notifications for monitoring
     const { notifications, error } = await listNotifications('pending', durableObjectUrl);

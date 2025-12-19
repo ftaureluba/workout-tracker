@@ -30,7 +30,9 @@ export async function POST(req: NextRequest) {
     const fireAt = now + (Number(delayMs) || 0);
 
     // Get the Durable Objects URL from environment
-    const durableObjectUrl = process.env.DURABLE_OBJECTS_URL || 'http://localhost:8787';
+    const durableObjectUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
+      ? `https://${process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL}`
+      : 'http://localhost:8787';
 
     // Use Durable Objects for scheduling (even immediate sends)
     const result = await scheduleNotificationDurable(
