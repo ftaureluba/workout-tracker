@@ -71,6 +71,13 @@
       "when": 1765134036040,
       "tag": "0009_gifted_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1766531886284,
+      "tag": "0010_chief_nighthawk",
+      "breakpoints": true
     }
   ]
 }

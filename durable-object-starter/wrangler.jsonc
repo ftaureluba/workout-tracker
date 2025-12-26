@@ -39,6 +39,7 @@
 	 */
 	"vars": {
 		"VAPID_PUBLIC_KEY": "BHoe7Y0aXl-AE7iZSur8dydj0gdmTsJs6-9KJvKfUvvsjKIyL2h6pNr2_DVSn95thdrUhOyquAFUDr-nK4VN03c",
+		"NEXT_JS_URL": "http://localhost:3000"
 	},
 	/**
 	 * Environment Variables

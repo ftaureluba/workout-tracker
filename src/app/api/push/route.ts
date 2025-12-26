@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { scheduleNotificationDurable } from '@/lib/durable-push';
+import { db } from '@/lib/db';
+import { pushJobs } from '@/lib/db/schema';
 
 /**
  * POST /api/push
  * 
  * Immediate or delayed push notification via Durable Objects.
- * This endpoint now delegates to the event-driven Durable Objects system.
+ * This endpoint creates a Job and schedules it with the Worker.
  * 
  * Request body:
  * {
@@ -27,33 +28,58 @@ export async function POST(req: NextRequest) {
     }
 
     const now = Date.now();
-    const fireAt = now + (Number(delayMs) || 0);
+    const fireAtTime = now + (Number(delayMs) || 0);
 
-    // Get the Durable Objects URL from environment
-    const durableObjectUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
+    // Create Job in database
+    const jobPayload = {
+      title,
+      body: message,
+      subscription,
+    };
+
+    const insertResult = await db
+      .insert(pushJobs)
+      .values({
+        userId: userId || null,
+        fireAt: new Date(fireAtTime),
+        payload: JSON.stringify(jobPayload),
+        status: 'scheduled',
+      })
+      .returning({ id: pushJobs.id });
+
+    if (!insertResult.length) {
+      return NextResponse.json({ error: 'Failed to create job' }, { status: 500 });
+    }
+
+    const jobId = insertResult[0].id;
+
+    // Schedule the job with the Worker
+    const workerUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
       ? `https://${process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL}`
       : 'http://localhost:8787';
 
-    // Use Durable Objects for scheduling (even immediate sends)
-    const result = await scheduleNotificationDurable(
-      {
-        subscription,
-        fireAt,
-        title,
-        body: message,
-        userId,
-      },
-      durableObjectUrl
-    );
+    try {
+      const workerResponse = await fetch(`${workerUrl}/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          fireAt: fireAtTime,
+        }),
+      });
 
-    if (!result.ok) {
-      return NextResponse.json({ ok: false, error: result.error || 'Failed to schedule' }, { status: 500 });
+      if (!workerResponse.ok) {
+        console.error('Worker scheduling failed:', workerResponse.status);
+      }
+    } catch (workerErr) {
+      console.error('Worker communication error:', workerErr);
+      // Job is created, so don't fail the request
     }
 
     return NextResponse.json({
       ok: true,
       scheduled: delayMs > 0,
-      result: { id: result.id },
+      result: { id: jobId },
     });
   } catch (err) {
     console.error('Push API error', err);

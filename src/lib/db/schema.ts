@@ -194,3 +194,14 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').default(sql`now()`).notNull(),
 });
+
+export const pushJobs = pgTable('push_jobs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  fireAt: timestamp('fire_at').notNull(),
+  payload: text('payload').notNull(), // JSON serialized payload: { title, body, subscription }
+  status: text('status').default('scheduled').notNull(), // 'scheduled' | 'sent' | 'failed'
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  sentAt: timestamp('sent_at'),
+});

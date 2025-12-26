@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { scheduleNotificationDurable } from '@/lib/durable-push';
+import { db } from '@/lib/db';
+import { pushJobs } from '@/lib/db/schema';
 
 /**
  * POST /api/push/schedule
  * 
  * Schedule a push notification using the Durable Objects backend.
- * This is an event-driven approach that replaces the old polling method.
+ * 
+ * Flow:
+ * 1. Create Job in DB with status: 'scheduled'
+ * 2. Call Worker with jobId and fireAt
+ * 3. Worker sets alarm and calls /api/push/fire when it fires
  * 
  * Request body:
  * {
@@ -28,30 +33,74 @@ export async function POST(req: NextRequest) {
     }
 
     const now = Date.now();
-    const sendTimestamp = sendAt ? new Date(sendAt).getTime() : now + (Number(delayMs) || 0);
+    const fireAtTime = sendAt ? new Date(sendAt).getTime() : now + (Number(delayMs) || 0);
 
-    // Get the Durable Objects URL from environment or use default
-    const durableObjectUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
+    // Step 1: Create Job in database
+    const jobPayload = {
+      title,
+      body: message,
+      subscription,
+    };
+
+    const insertResult = await db
+      .insert(pushJobs)
+      .values({
+        userId: userId || null,
+        fireAt: new Date(fireAtTime),
+        payload: JSON.stringify(jobPayload),
+        status: 'scheduled',
+      })
+      .returning({ id: pushJobs.id });
+
+    if (!insertResult.length) {
+      return NextResponse.json({ error: 'Failed to create job' }, { status: 500 });
+    }
+
+    const jobId = insertResult[0].id;
+
+    // Step 2: Schedule the job with the Durable Object Worker
+    const workerUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
       ? `https://${process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL}`
       : 'http://localhost:8787';
 
-    // Schedule via Durable Objects
-    const result = await scheduleNotificationDurable(
-      {
-        subscription,
-        fireAt: sendTimestamp,
-        title,
-        body: message,
-        userId,
-      },
-      durableObjectUrl
-    );
+    try {
+      const workerResponse = await fetch(`${workerUrl}/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          fireAt: fireAtTime,
+        }),
+      });
 
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error || 'Failed to schedule' }, { status: 500 });
+      if (!workerResponse.ok) {
+        const error = await workerResponse.json().catch(() => ({ error: workerResponse.statusText }));
+        // Job is created but not scheduled - Worker is unreachable
+        console.error('Worker scheduling failed:', error);
+        return NextResponse.json(
+          { 
+            ok: false, 
+            error: error.error || 'Failed to schedule with Worker',
+            jobId,
+            note: 'Job was created but Worker is unreachable'
+          },
+          { status: 503 }
+        );
+      }
+
+      return NextResponse.json({ ok: true, scheduled: true, id: jobId });
+    } catch (workerErr) {
+      console.error('Worker communication error:', workerErr);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Worker unreachable',
+          jobId,
+          note: 'Job was created but could not be scheduled with Worker',
+        },
+        { status: 503 }
+      );
     }
-
-    return NextResponse.json({ ok: true, scheduled: true, id: result.id });
   } catch (err) {
     console.error('/api/push/schedule error', err);
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
