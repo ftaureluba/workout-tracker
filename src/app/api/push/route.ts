@@ -21,7 +21,7 @@ import { pushJobs } from '@/lib/db/schema';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { subscription, title = 'Timer', body: message = 'Time is up', delayMs = 0, userId } = body;
+    const { subscription, title = 'Timer', body: message = 'Time is up', delayMs = 1000, userId } = body;
 
     if (!subscription) {
       return NextResponse.json({ error: 'Missing subscription' }, { status: 400 });
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const jobId = insertResult[0].id;
 
     // Schedule the job with the Worker
-    const workerUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
+    const workerUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL
       ? `https://${process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL}`
       : 'http://localhost:8787';
 

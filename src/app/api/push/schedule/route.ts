@@ -26,8 +26,8 @@ import { pushJobs } from '@/lib/db/schema';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { subscription, sendAt, delayMs = 0, title = 'Timer', body: message = 'Time is up', userId } = body;
-    
+    const { subscription, sendAt, delayMs = 1000, title = 'Timer', body: message = 'Time is up', userId } = body;
+
     if (!subscription) {
       return NextResponse.json({ error: 'Missing subscription' }, { status: 400 });
     }
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const jobId = insertResult[0].id;
 
     // Step 2: Schedule the job with the Durable Object Worker
-    const workerUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL 
+    const workerUrl = process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL
       ? `https://${process.env.NEXT_PUBLIC_DURABLE_OBJECTS_URL}`
       : 'http://localhost:8787';
 
@@ -78,8 +78,8 @@ export async function POST(req: NextRequest) {
         // Job is created but not scheduled - Worker is unreachable
         console.error('Worker scheduling failed:', error);
         return NextResponse.json(
-          { 
-            ok: false, 
+          {
+            ok: false,
             error: error.error || 'Failed to schedule with Worker',
             jobId,
             note: 'Job was created but Worker is unreachable'

@@ -30,6 +30,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
     }
 
+    // Security check: Validate CRON_SECRET
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Load the job from database
     const jobs = await db
       .select()

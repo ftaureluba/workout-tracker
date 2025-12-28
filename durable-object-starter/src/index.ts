@@ -127,7 +127,7 @@ export class Scheduler {
 
     const nextJob = pendingJobs[0];
     const now = Date.now();
-    const delayMs = Math.max(0, nextJob.fireAt - now);
+    const delayMs = Math.max(1000, nextJob.fireAt - now);
 
     // Cloudflare Durable Objects can only have one alarm at a time
     // Set it to fire at the next job's time
@@ -165,7 +165,10 @@ export class Scheduler {
     try {
       const response = await fetch(`${nextjsUrl}/api/push/fire`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.env.CRON_SECRET}`
+        },
         body: JSON.stringify({ jobId }),
       });
 
@@ -310,6 +313,10 @@ async function handleList(request: Request, env: Env): Promise<Response> {
  * Type definitions for Cloudflare environment
  */
 interface Env {
-  SCHEDULER: DurableObjectNamespace;
+  SCHEDULER: DurableObjectNamespace<Scheduler>;
   NEXT_JS_URL?: string;
+  VAPID_PUBLIC_KEY: string;
+  VAPID_PRIVATE_KEY?: string;
+  CRON_SECRET: string;
 }
+
