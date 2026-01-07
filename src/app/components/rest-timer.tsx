@@ -146,7 +146,6 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
     }
 
     setRunning(true)
-    toast({ title: "Timer started", description: `Running for ${Math.max(1, startSecs)} seconds` })
   }
 
   const pause = () => {
