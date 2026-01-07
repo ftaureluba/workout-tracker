@@ -140,11 +140,16 @@ export class Scheduler extends DurableObject<Env> {
    */
   async processNextAlarm() {
     const now = Date.now();
+    console.log('[Scheduler] processNextAlarm: checking', this.jobs.size, 'jobs at', new Date(now).toISOString());
+
     const jobsToFire = Array.from(this.jobs.values()).filter(
       (job) => job.status === 'scheduled' && job.fireAt <= now
     );
 
+    console.log('[Scheduler] Found', jobsToFire.length, 'jobs to fire');
+
     for (const job of jobsToFire) {
+      console.log('[Scheduler] Firing job:', job.jobId);
       await this.fireJob(job.jobId);
     }
 
@@ -158,10 +163,12 @@ export class Scheduler extends DurableObject<Env> {
   private async fireJob(jobId: string) {
     const job = this.jobs.get(jobId);
     if (!job) {
+      console.log('[Scheduler] fireJob: job not found:', jobId);
       return;
     }
 
     const nextjsUrl = this.env.NEXT_JS_URL || 'http://localhost:3000';
+    console.log('[Scheduler] fireJob: calling', nextjsUrl, '/api/push/fire for', jobId);
 
     try {
       const response = await fetch(`${nextjsUrl}/api/push/fire`, {
@@ -173,16 +180,20 @@ export class Scheduler extends DurableObject<Env> {
         body: JSON.stringify({ jobId }),
       });
 
+      console.log('[Scheduler] fireJob response:', response.status, response.statusText);
+
       if (response.ok) {
         // Mark job as fired
         job.status = 'fired';
         this.jobs.set(jobId, job);
         await this.persistJobs();
+        console.log('[Scheduler] Job marked as fired:', jobId);
       } else {
-        console.error(`Failed to fire job ${jobId}:`, response.status, response.statusText);
+        const text = await response.text().catch(() => '');
+        console.error(`[Scheduler] Failed to fire job ${jobId}:`, response.status, response.statusText, text);
       }
     } catch (err) {
-      console.error(`Error firing job ${jobId}:`, err);
+      console.error(`[Scheduler] Error firing job ${jobId}:`, err);
     }
   }
 
@@ -213,6 +224,18 @@ export class Scheduler extends DurableObject<Env> {
    * Handle alarm - called automatically by Cloudflare
    */
   async alarm() {
+    console.log('[Scheduler] alarm() fired');
+
+    // CRITICAL: Reload jobs from storage in case the DO hibernated
+    // and the in-memory Map is empty
+    const stored = await this.ctx.storage.get('jobs');
+    if (stored) {
+      this.jobs = new Map(JSON.parse(stored as string));
+      console.log('[Scheduler] Reloaded', this.jobs.size, 'jobs from storage');
+    } else {
+      console.log('[Scheduler] No jobs in storage');
+    }
+
     await this.processNextAlarm();
   }
 }
