@@ -120,6 +120,8 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
           console.log("[RestTimer] /api/push/schedule response:", scheduleRes.status, scheduleData)
           if (!scheduleRes.ok) {
             toast({ title: "Schedule failed", description: `HTTP ${scheduleRes.status}: ${JSON.stringify(scheduleData)}` })
+          } else {
+            toast({ title: "Push scheduled", description: `Will fire in ${secs}s via worker` })
           }
         } catch (scheduleErr) {
           console.error("[RestTimer] /api/push/schedule error:", scheduleErr)
