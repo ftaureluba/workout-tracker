@@ -21,6 +21,9 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
   const [tempMinutes, setTempMinutes] = useState(Math.floor(defaultSeconds / 60).toString())
   const [tempSeconds, setTempSeconds] = useState((defaultSeconds % 60).toString())
   const timerRef = useRef<number | null>(null)
+  // Store the end timestamp so we can calculate remaining time accurately
+  // even after the app was backgrounded
+  const endAtRef = useRef<number | null>(null)
 
   const displayMinutes = Math.floor(remaining / 60)
   const displaySeconds = remaining % 60
@@ -32,21 +35,28 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
   }, [seconds])
 
   useEffect(() => {
-    if (running) {
-      timerRef.current = window.setInterval(() => {
-        setRemaining((r) => {
-          const newRemaining = r - 1
-          if (newRemaining <= 0) {
-            window.clearInterval(timerRef.current ?? undefined)
-            timerRef.current = null
-            setRunning(false)
-            // Schedule onTimerEnd to run after state updates
-            setTimeout(() => onTimerEnd(), 0)
-            return 0
-          }
-          return newRemaining
-        })
-      }, 1000)
+    if (running && endAtRef.current) {
+      // Calculate remaining time from endAt timestamp on each tick
+      // This ensures the timer stays accurate even after backgrounding
+      const tick = () => {
+        const now = Date.now()
+        const newRemaining = Math.max(0, Math.floor((endAtRef.current! - now) / 1000))
+        setRemaining(newRemaining)
+
+        if (newRemaining <= 0) {
+          window.clearInterval(timerRef.current ?? undefined)
+          timerRef.current = null
+          endAtRef.current = null
+          setRunning(false)
+          // Schedule onTimerEnd to run after state updates
+          setTimeout(() => onTimerEnd(), 0)
+        }
+      }
+
+      // Run immediately to update display right away (e.g., when returning from background)
+      tick()
+
+      timerRef.current = window.setInterval(tick, 1000)
     }
 
     return () => {
@@ -145,61 +155,42 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
       timerRef.current = null
     }
 
+    // Set the end timestamp - this is the source of truth for remaining time
+    endAtRef.current = Date.now() + startSecs * 1000
     setRunning(true)
   }
 
   const pause = () => {
     setRunning(false)
+    // When pausing, clear endAt so we can resume with the current remaining time
+    endAtRef.current = null
   }
 
   const resume = () => {
-    // Just resume without re-subscribing to push
+    // Set new endAt based on current remaining time
+    endAtRef.current = Date.now() + remaining * 1000
     setRunning(true)
   }
 
   const reset = () => {
     setRunning(false)
+    endAtRef.current = null
     setRemaining(seconds)
   }
 
   const onTimerEnd = async () => {
-    // Try local Notification first
+    // The scheduled push via Cloudflare DO should have already fired.
+    // We just show a local notification (for desktop) and toast for in-app feedback.
+    // No server push here to avoid duplicate notifications.
     try {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(`${label} finished`, { body: "Time is up", icon: "/icons/icon-192x192.png" })
       }
     } catch {
-      // Ignore local notification errors
+      // Ignore local notification errors (e.g., iOS doesn't support new Notification())
     }
 
-    // If service worker push subscription exists, ask server to send a push as a fallback (immediate)
-    try {
-      const sub = await getExistingSubscription()
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string | undefined
-      let subscription = sub
-      if (!subscription && vapidKey) {
-        subscription = await subscribeToPush(vapidKey)
-      }
-
-      if (subscription) {
-        // POST to server to trigger a push notification now
-        const res = await fetch("/api/push", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscription, title: `${label} finished`, body: "Your rest period is over" }),
-        })
-        if (res.ok) {
-          toast({ title: "Timer finished", description: "Notification delivered" })
-        } else {
-          const text = await res.text().catch(() => "no body")
-          toast({ title: "Timer finished", description: `Server push failed: ${text}` })
-        }
-      } else {
-        toast({ title: "Timer finished", description: "Shown locally" })
-      }
-    } catch (err) {
-      toast({ title: "Push request error", description: String(err) })
-    }
+    toast({ title: "Timer finished", description: "Time is up!" })
 
     // Ensure UI reflects stopped state
     setRunning(false)
