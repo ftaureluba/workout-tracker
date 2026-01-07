@@ -22,9 +22,11 @@ import webpush from 'web-push';
  * }
  */
 export async function POST(req: NextRequest) {
+  console.log('[/api/push/fire] Received request');
   try {
     const requestBody = await req.json();
     const { jobId } = requestBody;
+    console.log('[/api/push/fire] jobId:', jobId);
 
     if (!jobId) {
       return NextResponse.json({ error: 'Missing jobId' }, { status: 400 });
@@ -32,7 +34,11 @@ export async function POST(req: NextRequest) {
 
     // Security check: Validate CRON_SECRET
     const authHeader = req.headers.get('Authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
+    console.log('[/api/push/fire] Auth check - header present:', !!authHeader, 'matches:', authHeader === expectedAuth);
+
+    if (authHeader !== expectedAuth) {
+      console.log('[/api/push/fire] Unauthorized - returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

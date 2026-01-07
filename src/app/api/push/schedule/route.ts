@@ -24,11 +24,22 @@ import { pushJobs } from '@/lib/db/schema';
  * }
  */
 export async function POST(req: NextRequest) {
+  console.log('[/api/push/schedule] Received request');
   try {
     const body = await req.json();
     const { subscription, sendAt, delayMs = 1000, title = 'Timer', body: message = 'Time is up', userId } = body;
 
+    console.log('[/api/push/schedule] Parsed body:', {
+      hasSubscription: !!subscription,
+      subscriptionEndpoint: subscription?.endpoint?.substring(0, 50) + '...',
+      sendAt,
+      delayMs,
+      title,
+      userId: userId || 'none'
+    });
+
     if (!subscription) {
+      console.log('[/api/push/schedule] Missing subscription, returning 400');
       return NextResponse.json({ error: 'Missing subscription' }, { status: 400 });
     }
 

@@ -84,33 +84,53 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
 
   const startWith = async (secs: number) => {
     // Request permission proactively so we can show notifications later
-    await requestNotificationPermission().catch(() => {})
+    await requestNotificationPermission().catch(() => { })
 
     // Try to obtain a PushSubscription so we can schedule a server push while backgrounded.
     try {
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string | undefined
+      console.log("[RestTimer] startWith: vapidKey present?", !!vapidKey)
       let subscription = await getExistingSubscription()
+      console.log("[RestTimer] startWith: existing subscription?", !!subscription)
       if (!subscription && vapidKey) {
         subscription = await subscribeToPush(vapidKey)
+        console.log("[RestTimer] startWith: new subscription obtained?", !!subscription)
         if (subscription) {
           toast({ title: "Push subscribed", description: "Subscription obtained" })
+        } else {
+          toast({ title: "No subscription", description: "subscribeToPush returned null" })
         }
       }
 
       if (subscription) {
         // Ask server to schedule a push for `secs` from now. Server will persist the schedule.
-        await fetch("/api/push/schedule", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            subscription,
-            title: `${label} finished`,
-            body: "Your rest period is over",
-            delayMs: secs * 1000,
-          }),
-        }).catch(() => {})
+        console.log("[RestTimer] Scheduling push for", secs, "seconds from now")
+        try {
+          const scheduleRes = await fetch("/api/push/schedule", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              subscription,
+              title: `${label} finished`,
+              body: "Your rest period is over",
+              delayMs: secs * 1000,
+            }),
+          })
+          const scheduleData = await scheduleRes.json().catch(() => ({}))
+          console.log("[RestTimer] /api/push/schedule response:", scheduleRes.status, scheduleData)
+          if (!scheduleRes.ok) {
+            toast({ title: "Schedule failed", description: `HTTP ${scheduleRes.status}: ${JSON.stringify(scheduleData)}` })
+          }
+        } catch (scheduleErr) {
+          console.error("[RestTimer] /api/push/schedule error:", scheduleErr)
+          toast({ title: "Schedule error", description: String(scheduleErr) })
+        }
+      } else {
+        console.log("[RestTimer] No subscription available, skipping server schedule")
+        toast({ title: "No push subscription", description: "Timer will only notify if app stays open" })
       }
     } catch (err) {
+      console.error("[RestTimer] Push prep failed:", err)
       toast({ title: "Push prep failed", description: String(err) })
     }
 
@@ -208,7 +228,7 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
 
       {/* Modal */}
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
-        <div className="w-full max-w-sm  backdrop-blur-md rounded-3xl p-6 shadow-2xl pointer-events-auto timer-texture h-[80vh]" style={{'backgroundColor': "#1C6E8C"}}>
+        <div className="w-full max-w-sm  backdrop-blur-md rounded-3xl p-6 shadow-2xl pointer-events-auto timer-texture h-[80vh]" style={{ 'backgroundColor': "#1C6E8C" }}>
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <button
