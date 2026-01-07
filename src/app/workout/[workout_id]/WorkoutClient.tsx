@@ -7,10 +7,28 @@ import RestTimer from '@/app/components/rest-timer';
 import { useToast } from '@/app/ui/use-toast';
 import { subscribeToPush, getExistingSubscription, unsubscribePush, requestNotificationPermission } from '@/lib/push';
 import { Button } from '@/app/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, GripVertical } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebar';
 import { useRouter } from "next/navigation";
 import type { Workout, WorkoutExercise, ActiveSession } from "@/lib/types";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Props {
   workoutId: string;
@@ -19,6 +37,103 @@ interface Props {
 type WorkoutLike =
   | (Workout & { exercises?: undefined })
   | ({ name: string; exercises: { name: string; sets?: { reps: number; weight: number }[] }[] });
+
+function SortableExercise({
+  id,
+  exercise,
+  idx,
+  removeExercise,
+  performed,
+  updatePerformed,
+  removeSet,
+  addSet
+}: {
+  id: string;
+  exercise: any;
+  idx: number;
+  removeExercise: (idx: number) => void;
+  performed: any[][];
+  updatePerformed: (exIndex: number, setIndex: number, field: "reps" | "weight", value: string) => void;
+  removeSet: (exIndex: number, setIndex: number) => void;
+  addSet: (exIndex: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
+    position: 'relative' as const,
+  };
+
+  return (
+    <section ref={setNodeRef} style={style} className={`bg-muted/50 rounded-xl p-4 ${isDragging ? 'opacity-50 ring-2 ring-primary' : ''}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 flex-1">
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none p-1 hover:bg-black/10 rounded">
+            <GripVertical className="h-5 w-5 text-gray-400" />
+          </div>
+          <div className="font-semibold">{exercise.name}</div>
+        </div>
+        <button onClick={() => removeExercise(idx)} className="text-sm text-red-500 ml-2">Remove Exercise</button>
+      </div>
+      <div className="space-y-2">
+        {exercise.sets && exercise.sets.length > 0 ? (
+          exercise.sets.map((set: any, setIdx: number) => (
+            <div
+              key={setIdx}
+              className="flex items-center justify-between bg-background rounded-lg px-3 py-2 border"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">Set {setIdx + 1}</span>
+                <button onClick={() => removeSet(idx, setIdx)} className="text-sm text-red-500">–</button>
+              </div>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number"
+                  className="w-14 px-2 py-1 rounded border text-center text-base"
+                  value={performed?.[idx]?.[setIdx]?.reps ?? ""}
+                  onChange={(e) => updatePerformed(idx, setIdx, 'reps', e.target.value)}
+                  min={0}
+                  aria-label="Reps"
+                  placeholder={typeof set.reps === 'number' ? String(set.reps) : ''}
+                />
+                <span className="text-sm text-muted-foreground">reps</span>
+
+                <input
+                  type="number"
+                  className="w-16 px-2 py-1 rounded border text-center text-base"
+                  value={performed?.[idx]?.[setIdx]?.weight ?? ""}
+                  onChange={(e) => updatePerformed(idx, setIdx, 'weight', e.target.value)}
+                  min={0}
+                  aria-label="Weight"
+                  placeholder={typeof set.weight === 'number' ? String(set.weight) : ''}
+                />
+                <span className="text-sm text-muted-foreground">kg</span>
+
+              </div>
+              <div className="ml-4">
+                <RestTimer defaultSeconds={60} label={`Rest ${setIdx + 1}`} />
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-3 bg-background rounded-lg border text-sm text-muted-foreground">No sets available</div>
+        )}
+        <div className="mt-2">
+          <button onClick={() => addSet(idx)} className="text-sm text-blue-600">+ Add set</button>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function WorkoutClient({ workoutId }: Props) {
   const { toggle: toggleSidebar } = useSidebar();
@@ -59,7 +174,7 @@ export default function WorkoutClient({ workoutId }: Props) {
     hasExercisesArray(workout)
       ? workout.exercises
       : hasWorkoutExercises(workout)
-      ? workout.workoutExercises.map((we: WorkoutExercise) => {
+        ? workout.workoutExercises.map((we: WorkoutExercise) => {
           // determine number of sets from plannedSets (if present) else default to 3
           const setsCount = typeof we.plannedSets === "number" && we.plannedSets > 0 ? we.plannedSets : 3;
           const sets = Array.from({ length: setsCount }).map(() => ({
@@ -69,7 +184,7 @@ export default function WorkoutClient({ workoutId }: Props) {
 
           return { name: we.exercise?.name ?? "Unnamed exercise", sets, exerciseId: we.exerciseId, order: we.order };
         })
-      : [];
+        : [];
 
   // Editable exercises state: allows adding/removing sets/exercises on the fly
   type EditExercise = { name: string; sets?: { reps?: number; weight?: number }[]; exerciseId?: string; order?: number };
@@ -96,7 +211,7 @@ export default function WorkoutClient({ workoutId }: Props) {
   // Initialize editableExercises when workout (normalizedExercises) changes
   useEffect(() => {
     setEditableExercises(normalizedExercises.map((e) => ({ ...e })));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workout]);
 
   useEffect(() => {
@@ -165,63 +280,96 @@ export default function WorkoutClient({ workoutId }: Props) {
     setPerformed(initial);
   }, [editableExercises]);
 
-    // Handlers to add/remove sets and exercises (moved above the render/returns so hooks are unconditional)
-    const addSet = (exIndex: number) => {
-      setEditableExercises((prev) => {
-        const copy = prev.map((e) => ({ ...e, sets: e.sets ? [...e.sets] : [] }));
-        const target = copy[exIndex];
-        if (!target) return prev;
-        target.sets = target.sets || [];
-        target.sets.push({ reps: undefined, weight: undefined });
-        return copy;
+  // Handlers to add/remove sets and exercises (moved above the render/returns so hooks are unconditional)
+  const addSet = (exIndex: number) => {
+    setEditableExercises((prev) => {
+      const copy = prev.map((e) => ({ ...e, sets: e.sets ? [...e.sets] : [] }));
+      const target = copy[exIndex];
+      if (!target) return prev;
+      target.sets = target.sets || [];
+      target.sets.push({ reps: undefined, weight: undefined });
+      return copy;
+    });
+
+    setPerformed((prev) => {
+      const copy = prev.map((arr) => arr.slice());
+      if (!copy[exIndex]) copy[exIndex] = [];
+      copy[exIndex].push({ reps: "", weight: "" });
+      return copy;
+    });
+  };
+
+  const removeSet = (exIndex: number, setIndex: number) => {
+    setEditableExercises((prev) => {
+      const copy = prev.map((e) => ({ ...e, sets: e.sets ? [...e.sets] : [] }));
+      const target = copy[exIndex];
+      if (!target || !target.sets) return prev;
+      target.sets.splice(setIndex, 1);
+      return copy;
+    });
+
+    setPerformed((prev) => {
+      const copy = prev.map((arr) => arr.slice());
+      if (!copy[exIndex]) return copy;
+      copy[exIndex].splice(setIndex, 1);
+      return copy;
+    });
+  };
+
+  const addExercise = (exerciseId?: string, exerciseName?: string) => {
+    const name = exerciseName ?? exerciseId ?? "New Exercise";
+    const newEx: EditExercise = { name, exerciseId: exerciseId || undefined, sets: Array.from({ length: 3 }).map(() => ({ reps: undefined, weight: undefined })) };
+    setEditableExercises((prev) => [...prev, newEx]);
+    setPerformed((prev) => [...prev, (newEx.sets || []).map(() => ({ reps: "", weight: "" }))]);
+  };
+
+  const removeExercise = (exIndex: number) => {
+    setEditableExercises((prev) => {
+      const copy = prev.map((e) => ({ ...e, sets: e.sets ? [...e.sets] : [] }));
+      copy.splice(exIndex, 1);
+      return copy;
+    });
+    setPerformed((prev) => {
+      const copy = prev.map((arr) => arr.slice());
+      copy.splice(exIndex, 1);
+      return copy;
+    });
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setEditableExercises((items) => {
+        const oldIndex = items.findIndex((item) => (item.exerciseId ?? item.name) === active.id);
+        const newIndex = items.findIndex((item) => (item.exerciseId ?? item.name) === over?.id);
+
+        return arrayMove(items, oldIndex, newIndex);
       });
 
       setPerformed((prev) => {
-        const copy = prev.map((arr) => arr.slice());
-        if (!copy[exIndex]) copy[exIndex] = [];
-        copy[exIndex].push({ reps: "", weight: "" });
-        return copy;
+        const performedCopy = [...prev];
+        const oldIndex = editableExercises.findIndex((item) => (item.exerciseId ?? item.name) === active.id);
+        const newIndex = editableExercises.findIndex((item) => (item.exerciseId ?? item.name) === over?.id);
+        return arrayMove(performedCopy, oldIndex, newIndex);
       });
-    };
+    }
+  };
 
-    const removeSet = (exIndex: number, setIndex: number) => {
-      setEditableExercises((prev) => {
-        const copy = prev.map((e) => ({ ...e, sets: e.sets ? [...e.sets] : [] }));
-        const target = copy[exIndex];
-        if (!target || !target.sets) return prev;
-        target.sets.splice(setIndex, 1);
-        return copy;
-      });
-
-      setPerformed((prev) => {
-        const copy = prev.map((arr) => arr.slice());
-        if (!copy[exIndex]) return copy;
-        copy[exIndex].splice(setIndex, 1);
-        return copy;
-      });
-    };
-
-    const addExercise = (exerciseId?: string, exerciseName?: string) => {
-      const name = exerciseName ?? exerciseId ?? "New Exercise";
-      const newEx: EditExercise = { name, exerciseId: exerciseId || undefined, sets: Array.from({ length: 3 }).map(() => ({ reps: undefined, weight: undefined })) };
-      setEditableExercises((prev) => [...prev, newEx]);
-      setPerformed((prev) => [...prev, (newEx.sets || []).map(() => ({ reps: "", weight: "" }))]);
-    };
-
-    const removeExercise = (exIndex: number) => {
-      setEditableExercises((prev) => {
-        const copy = prev.map((e) => ({ ...e, sets: e.sets ? [...e.sets] : [] }));
-        copy.splice(exIndex, 1);
-        return copy;
-      });
-      setPerformed((prev) => {
-        const copy = prev.map((arr) => arr.slice());
-        copy.splice(exIndex, 1);
-        return copy;
-      });
-    };
-
-    // exercise picker modal will fetch exercises itself; open/close controlled by pickerOpen
+  // exercise picker modal will fetch exercises itself; open/close controlled by pickerOpen
 
   // Autosave performed values (debounced) to IndexedDB so data persists if user closes the app
   useEffect(() => {
@@ -241,8 +389,8 @@ export default function WorkoutClient({ workoutId }: Props) {
           order: ex.order ?? exIdx,
           sets: (ex.sets || []).map((planned, sIdx) => {
             const perf = performed[exIdx] && performed[exIdx][sIdx] ? performed[exIdx][sIdx] : {} as { reps?: number | ""; weight?: number | "" };
-            const reps = typeof perf.reps === 'number' && !Number.isNaN(perf.reps) ? perf.reps : (planned?.reps ?? 0);
-            const weight = typeof perf.weight === 'number' && !Number.isNaN(perf.weight) ? perf.weight : (planned?.weight ?? 0);
+            const reps = typeof perf.reps === 'number' && !Number.isNaN(perf.reps) ? perf.reps : 0;
+            const weight = typeof perf.weight === 'number' && !Number.isNaN(perf.weight) ? perf.weight : 0;
             return { reps, weight, completed: reps > 0 };
           })
         }))
@@ -256,7 +404,7 @@ export default function WorkoutClient({ workoutId }: Props) {
     }, 800);
 
     return () => clearTimeout(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [performed, editableExercises, workout]);
 
   // Best-effort save on pagehide/visibilitychange/beforeunload
@@ -271,21 +419,21 @@ export default function WorkoutClient({ workoutId }: Props) {
         workoutName: ((workout as Record<string, unknown>)['name'] as string) ?? (workout as Workout).name,
         startedAt,
         lastSaved: now,
-  exercises: editableExercises.map((ex, exIdx) => ({
+        exercises: editableExercises.map((ex, exIdx) => ({
           exerciseId: ex.exerciseId ?? "",
           exerciseName: ex.name,
           order: ex.order ?? exIdx,
           sets: (ex.sets || []).map((planned, sIdx) => {
             const perf = performed[exIdx] && performed[exIdx][sIdx] ? performed[exIdx][sIdx] : {} as { reps?: number | ""; weight?: number | "" };
-            const reps = typeof perf.reps === 'number' && !Number.isNaN(perf.reps) ? perf.reps : (planned?.reps ?? 0);
-            const weight = typeof perf.weight === 'number' && !Number.isNaN(perf.weight) ? perf.weight : (planned?.weight ?? 0);
+            const reps = typeof perf.reps === 'number' && !Number.isNaN(perf.reps) ? perf.reps : 0;
+            const weight = typeof perf.weight === 'number' && !Number.isNaN(perf.weight) ? perf.weight : 0;
             return { reps, weight, completed: reps > 0 };
           })
         }))
       } as ActiveSession;
 
       // fire and forget
-      saveActiveSession(session).catch(() => {});
+      saveActiveSession(session).catch(() => { });
     };
 
     const onVisibility = () => {
@@ -332,11 +480,11 @@ export default function WorkoutClient({ workoutId }: Props) {
 
   const handleEndWorkout = async () => {
     try {
-  // Reuse the persistent session id (generated when the component mounted)
-  // to avoid creating a new one here and to ensure autosave/final save use
-  // the same id. Also avoids 'Illegal invocation' when extracting
-  // crypto.randomUUID out of the crypto object and calling it unbound.
-  const sessionId = sessionIdRef.current;
+      // Reuse the persistent session id (generated when the component mounted)
+      // to avoid creating a new one here and to ensure autosave/final save use
+      // the same id. Also avoids 'Illegal invocation' when extracting
+      // crypto.randomUUID out of the crypto object and calling it unbound.
+      const sessionId = sessionIdRef.current;
       const now = new Date().toISOString();
 
       const session: ActiveSession = {
@@ -345,14 +493,14 @@ export default function WorkoutClient({ workoutId }: Props) {
         workoutName: ((workout as Record<string, unknown>)['name'] as string) ?? (workout as Workout).name,
         startedAt,
         lastSaved: now,
-  exercises: editableExercises.map((ex, exIdx) => ({
+        exercises: editableExercises.map((ex, exIdx) => ({
           exerciseId: ex.exerciseId ?? "",
           exerciseName: ex.name,
           order: ex.order ?? exIdx,
           sets: (ex.sets || []).map((planned, sIdx) => {
             const perf = performed[exIdx] && performed[exIdx][sIdx] ? performed[exIdx][sIdx] : {} as { reps?: number | ""; weight?: number | "" };
-            const reps = typeof perf.reps === 'number' && !Number.isNaN(perf.reps) ? perf.reps : (planned?.reps ?? 0);
-            const weight = typeof perf.weight === 'number' && !Number.isNaN(perf.weight) ? perf.weight : (planned?.weight ?? 0);
+            const reps = typeof perf.reps === 'number' && !Number.isNaN(perf.reps) ? perf.reps : 0;
+            const weight = typeof perf.weight === 'number' && !Number.isNaN(perf.weight) ? perf.weight : 0;
             return { reps, weight, completed: reps > 0 };
           })
         }))
@@ -398,180 +546,149 @@ export default function WorkoutClient({ workoutId }: Props) {
 
   return (
     <>
-    <header className="w-full border-b bg-card/30 backdrop-blur-sm">
-      <div className="flex items-center justify-between p-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10"
-          onClick={() => toggleSidebar()}
-          aria-label="Toggle sidebar"
-        >
-          <Menu className="h-6 w-6" />
-        </Button>
-        <h1 className="text-2xl font-bold mb-4 text-center">{((workout as Record<string, unknown>)['name'] as string) ?? (workout as Workout).name}</h1>
-      
+      <header className="w-full border-b bg-card/30 backdrop-blur-sm">
+        <div className="flex items-center justify-between p-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10"
+            onClick={() => toggleSidebar()}
+            aria-label="Toggle sidebar"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+          <h1 className="text-2xl font-bold mb-4 text-center">{((workout as Record<string, unknown>)['name'] as string) ?? (workout as Workout).name}</h1>
 
-        <div />
-      </div>
-    </header>
-    <main className="p-4 max-w-md mx-auto w-full">
-      <div className="flex justify-end mb-3">
-        <button onClick={() => setPickerOpen(true)} className="px-3 py-1 bg-blue-600 text-white rounded mr-2">+ Add exercise</button>
-        
-        <button
-          onClick={async () => {
-            try {
-              if (!pushEnabled) {
-                // enable: request permission then subscribe
-                const perm = await requestNotificationPermission();
-                if (perm !== 'granted') {
-                  toast({ title: 'Notifications blocked', description: 'Permission not granted' });
-                  return;
-                }
-                const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string | undefined;
-                if (!vapidKey) {
-                  toast({ title: 'VAPID missing', description: 'Set NEXT_PUBLIC_VAPID_PUBLIC_KEY in env' });
-                  return;
-                }
-                const sub = await subscribeToPush(vapidKey);
-                if (sub) {
-                  // Send subscription to server for debugging/persistence
-                  try {
-                    await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }) });
-                    toast({ title: 'Subscribed to push', description: 'Push enabled and sent to server' });
-                  } catch (e) {
-                    console.error('Failed to send subscription to server', e);
-                    toast({ title: 'Subscribed locally', description: 'Subscription obtained but failed to POST to server' });
+
+          <div />
+        </div>
+      </header>
+      <main className="p-4 max-w-md mx-auto w-full">
+        <div className="flex justify-end mb-3">
+          <button onClick={() => setPickerOpen(true)} className="px-3 py-1 bg-blue-600 text-white rounded mr-2">+ Add exercise</button>
+
+          <button
+            onClick={async () => {
+              try {
+                if (!pushEnabled) {
+                  // enable: request permission then subscribe
+                  const perm = await requestNotificationPermission();
+                  if (perm !== 'granted') {
+                    toast({ title: 'Notifications blocked', description: 'Permission not granted' });
+                    return;
                   }
-                  setPushEnabled(true);
-                } else {
-                  // Run diagnostics to give clearer feedback to the user
-                  try {
-                    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                      toast({ title: 'Subscribe failed', description: 'Push or Service Worker APIs are not supported by this browser.' });
-                    } else {
-                      // Check /sw.js availability
-                      let swResp: Response | null = null;
-                      try {
-                        swResp = await fetch('/sw.js', { method: 'GET', cache: 'no-store' });
-                      } catch (e) {
-                        swResp = null;
-                      }
-
-                      if (!swResp || !swResp.ok) {
-                        toast({ title: 'Subscribe failed', description: '/sw.js not reachable (HTTP ' + (swResp ? swResp.status : 'network') + '). Ensure the service worker is deployed.' });
-                        console.error('Push subscribe diagnostic: /sw.js fetch result', swResp);
+                  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string | undefined;
+                  if (!vapidKey) {
+                    toast({ title: 'VAPID missing', description: 'Set NEXT_PUBLIC_VAPID_PUBLIC_KEY in env' });
+                    return;
+                  }
+                  const sub = await subscribeToPush(vapidKey);
+                  if (sub) {
+                    // Send subscription to server for debugging/persistence
+                    try {
+                      await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }) });
+                      toast({ title: 'Subscribed to push', description: 'Push enabled and sent to server' });
+                    } catch (e) {
+                      console.error('Failed to send subscription to server', e);
+                      toast({ title: 'Subscribed locally', description: 'Subscription obtained but failed to POST to server' });
+                    }
+                    setPushEnabled(true);
+                  } else {
+                    // Run diagnostics to give clearer feedback to the user
+                    try {
+                      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                        toast({ title: 'Subscribe failed', description: 'Push or Service Worker APIs are not supported by this browser.' });
                       } else {
-                        const registration = await navigator.serviceWorker.getRegistration();
-                        const permission = ('Notification' in window) ? Notification.permission : 'unsupported';
-                        if (!registration) {
-                          toast({ title: 'Subscribe failed', description: 'Service worker not registered. Try reloading the page.' });
-                          console.error('Push subscribe diagnostic: no service worker registration');
+                        // Check /sw.js availability
+                        let swResp: Response | null = null;
+                        try {
+                          swResp = await fetch('/sw.js', { method: 'GET', cache: 'no-store' });
+                        } catch (e) {
+                          swResp = null;
+                        }
+
+                        if (!swResp || !swResp.ok) {
+                          toast({ title: 'Subscribe failed', description: '/sw.js not reachable (HTTP ' + (swResp ? swResp.status : 'network') + '). Ensure the service worker is deployed.' });
+                          console.error('Push subscribe diagnostic: /sw.js fetch result', swResp);
                         } else {
-                          toast({ title: 'Subscribe failed', description: `Subscription attempt failed. Notification permission: ${permission}. Check browser console for errors.` });
-                          console.error('Push subscribe diagnostic: registration present, but subscribe() returned null or failed');
+                          const registration = await navigator.serviceWorker.getRegistration();
+                          const permission = ('Notification' in window) ? Notification.permission : 'unsupported';
+                          if (!registration) {
+                            toast({ title: 'Subscribe failed', description: 'Service worker not registered. Try reloading the page.' });
+                            console.error('Push subscribe diagnostic: no service worker registration');
+                          } else {
+                            toast({ title: 'Subscribe failed', description: `Subscription attempt failed. Notification permission: ${permission}. Check browser console for errors.` });
+                            console.error('Push subscribe diagnostic: registration present, but subscribe() returned null or failed');
+                          }
                         }
                       }
+                    } catch (diagErr) {
+                      console.error('Subscribe diagnostics error', diagErr);
+                      toast({ title: 'Subscribe failed', description: 'Unknown error during diagnostics — check console.' });
                     }
-                  } catch (diagErr) {
-                    console.error('Subscribe diagnostics error', diagErr);
-                    toast({ title: 'Subscribe failed', description: 'Unknown error during diagnostics — check console.' });
+                  }
+                } else {
+                  const ok = await unsubscribePush();
+                  if (ok) {
+                    toast({ title: 'Unsubscribed', description: 'Push disabled' });
+                    setPushEnabled(false);
+                  } else {
+                    toast({ title: 'Unsubscribe failed', description: 'Could not unsubscribe' });
                   }
                 }
-              } else {
-                const ok = await unsubscribePush();
-                if (ok) {
-                  toast({ title: 'Unsubscribed', description: 'Push disabled' });
-                  setPushEnabled(false);
-                } else {
-                  toast({ title: 'Unsubscribe failed', description: 'Could not unsubscribe' });
-                }
+              } catch (err) {
+                console.error('Toggle push failed', err);
+                toast({ title: 'Error', description: 'Failed to toggle push' });
               }
-            } catch (err) {
-              console.error('Toggle push failed', err);
-              toast({ title: 'Error', description: 'Failed to toggle push' });
-            }
-          }}
-          className="ml-3 px-3 py-1 bg-gray-800 text-white rounded"
-        >
-          {pushEnabled ? 'Disable push' : 'Enable push'}
-        </button>
-      </div>
-     <div className="space-y-6">
-        {editableExercises.map((exercise, idx) => (
-          <section key={idx} className="bg-muted/50 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex-1 font-semibold">{exercise.name}</div>
-              <button onClick={() => removeExercise(idx)} className="text-sm text-red-500 ml-2">Remove Exercise</button>
-            </div>
-            <div className="space-y-2">
-                {exercise.sets && exercise.sets.length > 0 ? (
-                exercise.sets.map((set, setIdx) => (
-                  <div
-                    key={setIdx}
-                    className="flex items-center justify-between bg-background rounded-lg px-3 py-2 border"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground">Set {setIdx + 1}</span>
-                      <button onClick={() => removeSet(idx, setIdx)} className="text-sm text-red-500">–</button>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="number"
-                        className="w-14 px-2 py-1 rounded border text-center text-base"
-                        value={performed?.[idx]?.[setIdx]?.reps ?? ""}
-                        onChange={(e) => updatePerformed(idx, setIdx, 'reps', e.target.value)}
-                        min={0}
-                        aria-label="Reps"
-                        placeholder={typeof set.reps === 'number' ? String(set.reps) : ''}
-                      />
-                      <span className="text-sm text-muted-foreground">reps</span>
-
-                      <input
-                        type="number"
-                        className="w-16 px-2 py-1 rounded border text-center text-base"
-                        value={performed?.[idx]?.[setIdx]?.weight ?? ""}
-                        onChange={(e) => updatePerformed(idx, setIdx, 'weight', e.target.value)}
-                        min={0}
-                        aria-label="Weight"
-                        placeholder={typeof set.weight === 'number' ? String(set.weight) : ''}
-                      />
-                      <span className="text-sm text-muted-foreground">kg</span>
-                    
-                    </div>
-                    <div className="ml-4">
-                      <RestTimer defaultSeconds={60} label={`Rest ${setIdx + 1}`} />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-3 bg-background rounded-lg border text-sm text-muted-foreground">No sets available</div>
-              )}
-              <div className="mt-2">
-                <button onClick={() => addSet(idx)} className="text-sm text-blue-600">+ Add set</button>
-              </div>
-            </div>
-          </section>
-        ))}
-        <div className="pt-2">
-          <button onClick={() => addExercise()} className="text-sm text-green-600">+ Add exercise</button>
+            }}
+            className="ml-3 px-3 py-1 bg-gray-800 text-white rounded"
+          >
+            {pushEnabled ? 'Disable push' : 'Enable push'}
+          </button>
         </div>
-      </div>
-    </main>
-    {/* Fixed End Workout button */}
-    {/* Exercise picker modal */}
-    <ExercisePicker
-      isOpen={pickerOpen}
-      onClose={() => setPickerOpen(false)}
-      onAddExercise={(ex: { id: string; name: string }) => { addExercise(ex.id, ex.name); setPickerOpen(false); }}
-    />
+        <div className="space-y-6">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={editableExercises.map(e => e.exerciseId ?? e.name)}
+              strategy={verticalListSortingStrategy}
+            >
+              {editableExercises.map((exercise, idx) => (
+                <SortableExercise
+                  key={exercise.exerciseId ?? exercise.name}
+                  id={exercise.exerciseId ?? exercise.name}
+                  exercise={exercise}
+                  idx={idx}
+                  removeExercise={removeExercise}
+                  performed={performed}
+                  updatePerformed={updatePerformed}
+                  removeSet={removeSet}
+                  addSet={addSet}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+          <div className="pt-2">
+            <button onClick={() => addExercise()} className="text-sm text-green-600">+ Add exercise</button>
+          </div>
+        </div>
+      </main>
+      {/* Fixed End Workout button */}
+      {/* Exercise picker modal */}
+      <ExercisePicker
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onAddExercise={(ex: { id: string; name: string }) => { addExercise(ex.id, ex.name); setPickerOpen(false); }}
+      />
 
-    <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
-      <button onClick={handleEndWorkout} 
-      style={{'backgroundColor' : "#1C6E8C"}}
-      className="w-full h-12 text-white font-semibold rounded-lg">End Workout</button>
-    </div>
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+        <button onClick={handleEndWorkout}
+          style={{ 'backgroundColor': "#1C6E8C" }}
+          className="w-full h-12 text-white font-semibold rounded-lg">End Workout</button>
+      </div>
     </>
   );
 }
