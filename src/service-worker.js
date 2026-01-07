@@ -11,13 +11,13 @@ if (typeof workbox !== 'undefined') {
 
   // Example runtime caching rules (you can extend these if needed)
   workbox.routing.registerRoute(
-    ({request}) => request.destination === 'document' || request.destination === 'script' || request.destination === 'style',
+    ({ request }) => request.destination === 'document' || request.destination === 'script' || request.destination === 'style',
     new workbox.strategies.NetworkFirst({ cacheName: 'assets' })
   );
 }
 
 // Push handler: show notification when push arrives
-self.addEventListener('push', function(event) {
+self.addEventListener('push', function (event) {
   try {
     const data = event.data ? event.data.json() : { title: 'Timer', body: 'Time is up' };
     const title = data.title || 'Timer ended';
@@ -29,23 +29,21 @@ self.addEventListener('push', function(event) {
       vibrate: data.vibrate || [200, 100, 200]
     }, data.options || {});
 
-    // If any client window is visible, avoid showing a notification from the
-    // service worker to prevent duplicates. Instead, forward the push payload
-    // to the visible clients via `postMessage` so the page can decide how to
-    // present the event (in-page notification, sound, UI update, etc.).
+    // Always show the notification. On iOS and other restrictive environments,
+    // checking for visible clients can cause notifications to be swallowed.
+    // We also forward the payload to any open clients so the page can react
+    // (play sound, update UI, etc.) but the system notification is always shown.
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-        const hasVisible = windowClients.some(c => c.visibilityState === 'visible');
-        if (hasVisible) {
-          for (const client of windowClients) {
-            try {
-              client.postMessage({ type: 'push', data });
-            } catch (e) {
-              // ignore
-            }
+        // Forward to open clients for in-page handling
+        for (const client of windowClients) {
+          try {
+            client.postMessage({ type: 'push', data });
+          } catch (e) {
+            // ignore
           }
-          return;
         }
+        // Always show the system notification
         return self.registration.showNotification(title, options);
       })
     );
@@ -55,7 +53,7 @@ self.addEventListener('push', function(event) {
 });
 
 // Notification click opens the app
-self.addEventListener('notificationclick', function(event) {
+self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   const urlToOpen = (event.notification && event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
