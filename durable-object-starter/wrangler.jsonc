@@ -39,7 +39,7 @@
 	 */
 	"vars": {
 		"VAPID_PUBLIC_KEY": "BHoe7Y0aXl-AE7iZSur8dydj0gdmTsJs6-9KJvKfUvvsjKIyL2h6pNr2_DVSn95thdrUhOyquAFUDr-nK4VN03c",
-		"NEXT_JS_URL": "http://localhost:3000"
+		"NEXT_JS_URL": "https://workout-tracker-sigma-fawn.vercel.app"
 	},
 	/**
 	 * Environment Variables
@@ -47,7 +47,6 @@
 	 */
 	// For production, use wrangler secret set VAPID_PRIVATE_KEY
 	// The public key can be a var
-	
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/

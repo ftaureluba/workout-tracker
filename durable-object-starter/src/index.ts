@@ -47,26 +47,27 @@ export default router;
  * Scheduler Durable Object class
  * Manages alarm scheduling and job state
  */
-export class Scheduler {
-  private state: DurableObjectState;
-  private env: Env;
+import { DurableObject } from "cloudflare:workers";
+
+export class Scheduler extends DurableObject<Env> {
   private jobs: Map<string, ScheduledJob> = new Map();
 
-  constructor(state: DurableObjectState, env: Env) {
-    this.state = state;
+  constructor(ctx: DurableObjectState<Env>, env: Env) {
+    super(ctx, env);
+    this.ctx = ctx;
     this.env = env;
   }
 
   async initialize() {
     // Load persisted jobs from storage on startup
-    const stored = await this.state.storage.get('jobs');
+    const stored = await this.ctx.storage.get('jobs');
     if (stored) {
       this.jobs = new Map(JSON.parse(stored as string));
     }
 
     // Set up alarm handler
-    this.state.blockConcurrencyWhile(async () => {
-      const alarmTime = await this.state.storage.getAlarm();
+    this.ctx.blockConcurrencyWhile(async () => {
+      const alarmTime = await this.ctx.storage.getAlarm();
       if (alarmTime) {
         // If there's a pending alarm, process it
         await this.processNextAlarm();
@@ -88,7 +89,8 @@ export class Scheduler {
     if (this.jobs.has(jobId)) {
       const existing = this.jobs.get(jobId)!;
       if (existing.status === 'scheduled') {
-        return { ok: true, jobId }; // Idempotent
+        // Ensure idempotency doesn't mask status updates if needed, but for now ok
+        return { ok: true, jobId };
       }
     }
 
@@ -103,9 +105,6 @@ export class Scheduler {
     await this.persistJobs();
 
     // Set alarm for this job
-
-    // Set or update the alarm - Durable Objects can only have one alarm at a time
-    // We'll set it to the earliest fire time and check all jobs when it fires
     await this.updateNextAlarm();
 
     return { ok: true, jobId };
@@ -121,7 +120,7 @@ export class Scheduler {
 
     if (pendingJobs.length === 0) {
       // No pending jobs, clear alarm
-      await this.state.storage.deleteAlarm();
+      await this.ctx.storage.deleteAlarm();
       return;
     }
 
@@ -131,8 +130,10 @@ export class Scheduler {
 
     // Cloudflare Durable Objects can only have one alarm at a time
     // Set it to fire at the next job's time
-    await this.state.storage.setAlarm(new Date(Date.now() + delayMs));
+    await this.ctx.storage.setAlarm(new Date(Date.now() + delayMs));
   }
+
+  // ... (processNextAlarm and fireJob are unchanged by state logic) ...
 
   /**
    * Process the next batch of jobs that should fire
@@ -204,8 +205,9 @@ export class Scheduler {
    */
   private async persistJobs() {
     const jobsArray = Array.from(this.jobs.entries());
-    await this.state.storage.put('jobs', JSON.stringify(jobsArray));
+    await this.ctx.storage.put('jobs', JSON.stringify(jobsArray));
   }
+
 
   /**
    * Handle alarm - called automatically by Cloudflare
