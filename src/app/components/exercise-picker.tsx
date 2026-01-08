@@ -95,6 +95,7 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
     selectedMovementPattern
 
   // Extract unique body parts, equipment, movement types, and patterns from data
+  // Filter out "unknown" or empty values to keep UI clean
   const filterOptions = useMemo(() => {
     const bodyParts = new Set<string>()
     const equipment = new Set<string>()
@@ -102,11 +103,10 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
     const movementPatterns = new Set<string>()
 
     exercises.forEach((exercise) => {
-      // Arrays are already parsed from DB
-      exercise.bodyParts.forEach((bp) => bodyParts.add(bp))
-      exercise.equipment.forEach((eq) => equipment.add(eq))
-      if (exercise.movementType) movementTypes.add(exercise.movementType)
-      if (exercise.movementPattern) movementPatterns.add(exercise.movementPattern)
+      exercise.bodyParts.forEach((bp) => { if (bp && bp.toLowerCase() !== 'unknown') bodyParts.add(bp) })
+      exercise.equipment.forEach((eq) => { if (eq && eq.toLowerCase() !== 'unknown') equipment.add(eq) })
+      if (exercise.movementType && exercise.movementType.toLowerCase() !== 'unknown') movementTypes.add(exercise.movementType)
+      if (exercise.movementPattern && exercise.movementPattern.toLowerCase() !== 'unknown') movementPatterns.add(exercise.movementPattern)
     })
 
     return {
@@ -151,17 +151,14 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl h-[85vh] p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 space-y-0">
+      <DialogContent className="max-w-2xl h-[85vh] p-0 gap-0 flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 space-y-0 shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold">Add exercise</DialogTitle>
-            <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground hover:text-foreground">
-              Close
-            </Button>
           </div>
         </DialogHeader>
 
-        <div className="px-6 space-y-4">
+        <div className="px-6 space-y-4 shrink-0">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -309,9 +306,9 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
         </div>
 
         {/* Exercise List */}
-        <div className="flex-1 mt-4 border-t">
+        <div className="flex-1 mt-4 min-h-0 border-t">
           <ScrollArea className="h-full">
-            <div className="px-6 py-4 space-y-1">
+            <div className="px-0 py-0">
               {loading ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
@@ -334,25 +331,25 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
                 filteredExercises.map((exercise) => (
                   <div
                     key={exercise.id}
-                    className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent/50 transition-colors group"
+                    className="flex items-center justify-between py-4 px-6 hover:bg-accent/50 transition-colors group border-b border-border last:border-0"
                   >
                     <div className="space-y-2 flex-1">
-                      <div className="font-medium">{exercise.name}</div>
+                      <div className="font-medium text-lg">{exercise.name}</div>
                       {exercise.description && (
                         <p className="text-xs text-muted-foreground line-clamp-1">{exercise.description}</p>
                       )}
                       <div className="flex flex-wrap gap-1">
-                        {exercise.bodyParts.length > 0 && (
+                        {exercise.bodyParts.length > 0 && exercise.bodyParts.some(x => x.toLowerCase() !== 'unknown') && (
                           <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                            {exercise.bodyParts.join(", ")}
+                            {exercise.bodyParts.filter(x => x.toLowerCase() !== 'unknown').join(", ")}
                           </span>
                         )}
-                        {exercise.equipment.length > 0 && (
+                        {exercise.equipment.length > 0 && exercise.equipment.some(x => x.toLowerCase() !== 'unknown') && (
                           <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                            {exercise.equipment.join(", ")}
+                            {exercise.equipment.filter(x => x.toLowerCase() !== 'unknown').join(", ")}
                           </span>
                         )}
-                        {exercise.movementType && (
+                        {exercise.movementType && exercise.movementType.toLowerCase() !== 'unknown' && (
                           <span className="text-xs bg-muted px-2 py-0.5 rounded capitalize">{exercise.movementType}</span>
                         )}
                       </div>
@@ -365,7 +362,7 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
                     <Button
                       size="sm"
                       onClick={() => handleAddExercise({ id: exercise.id, name: exercise.name })}
-                      className="opacity-100 group-hover:opacity-100 transition-opacity ml-2"
+                      className="opacity-100 ml-4 shrink-0"
                     >
                       Add
                     </Button>
