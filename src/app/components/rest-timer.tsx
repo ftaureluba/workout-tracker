@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { requestNotificationPermission, subscribeToPush, getExistingSubscription } from "@/lib/push"
 import { toast } from "@/app/ui/use-toast"
 import { ArrowLeft, Play, Check } from "lucide-react"
@@ -213,7 +214,11 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
     )
   }
 
-  return (
+  // Use a portal to render the modal at the document body level
+  // This avoids stacking context issues when the timer is inside a transformed element (like dnd-kit draggable)
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" onClick={() => setIsOpen(false)} />
@@ -349,6 +354,7 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   )
 }
