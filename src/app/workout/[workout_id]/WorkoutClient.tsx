@@ -671,9 +671,6 @@ export default function WorkoutClient({ workoutId }: Props) {
               ))}
             </SortableContext>
           </DndContext>
-          <div className="pt-2">
-            <button onClick={() => addExercise()} className="text-sm text-green-600">+ Add exercise</button>
-          </div>
         </div>
       </main>
       {/* Fixed End Workout button */}
