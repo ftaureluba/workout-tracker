@@ -209,8 +209,15 @@ export default function WorkoutClient({ workoutId }: Props) {
   }, []);
 
   // Initialize editableExercises when workout (normalizedExercises) changes
+  // Initialize editableExercises and performed when workout (normalizedExercises) changes
   useEffect(() => {
-    setEditableExercises(normalizedExercises.map((e) => ({ ...e })));
+    const exercises = normalizedExercises.map((e) => ({ ...e }));
+    setEditableExercises(exercises);
+
+    // Also initialize performed state based on these exercises
+    type PerformedVal = number | "";
+    const initialPerformed = exercises.map((ex) => (ex.sets || []).map(() => ({ reps: "" as PerformedVal, weight: "" as PerformedVal })));
+    setPerformed(initialPerformed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workout]);
 
@@ -268,17 +275,7 @@ export default function WorkoutClient({ workoutId }: Props) {
     };
   }, [workoutId]);
 
-  // Initialize performed state when editableExercises changes
-  useEffect(() => {
-    type PerformedVal = number | "";
-    if (!editableExercises || editableExercises.length === 0) {
-      setPerformed([]);
-      return;
-    }
 
-    const initial = editableExercises.map((ex) => (ex.sets || []).map(() => ({ reps: "" as PerformedVal, weight: "" as PerformedVal })));
-    setPerformed(initial);
-  }, [editableExercises]);
 
   // Handlers to add/remove sets and exercises (moved above the render/returns so hooks are unconditional)
   const addSet = (exIndex: number) => {
