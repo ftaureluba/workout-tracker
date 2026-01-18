@@ -1,4 +1,5 @@
 "use server";
+import { seedUserWorkouts } from "./user-seeding";
 import { db } from "./db";
 import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
@@ -56,12 +57,16 @@ export async function signup(prevState: State, formData: FormData) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
-    await db.insert(users).values({
+    const [newUser] = await db.insert(users).values({
       name: name,
       email: email,
       password: hashedPassword,
-    });
-  } catch {
+    }).returning();
+
+    // Seed default workouts for the new user
+    await seedUserWorkouts(newUser.id);
+  } catch (error) {
+    console.error("Signup error:", error);
     return { message: "Database Error: Failed to Create Account." };
   }
   redirect("/login");
