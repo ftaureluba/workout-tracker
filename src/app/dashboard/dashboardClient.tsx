@@ -128,7 +128,10 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
   // removed unused local references to satisfy linting
 
   const resumeSession = (sessionId: string) => {
-    router.push(`/workout/resume/${sessionId}`);
+    const session = activeSessions.find(s => s.sessionId === sessionId);
+    if (session?.workoutId) {
+      router.push(`/workout/${session.workoutId}?resume=${sessionId}`);
+    }
   };
 
   const deleteSession = async (sessionId: string) => {

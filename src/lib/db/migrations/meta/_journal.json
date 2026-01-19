@@ -78,6 +78,13 @@
       "when": 1766531886284,
       "tag": "0010_chief_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1768768144630,
+      "tag": "0011_drop_push_schedules",
+      "breakpoints": true
     }
   ]
 }

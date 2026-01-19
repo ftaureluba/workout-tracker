@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getWorkoutFromCache, saveActiveSession, queueSync, deleteActiveSession } from "@/lib/indexdb";
+import { getWorkoutFromCache, saveActiveSession, queueSync, deleteActiveSession, getActiveSession } from "@/lib/indexdb";
 import ExercisePicker from '@/app/components/exercise-picker';
 import RestTimer from '@/app/components/rest-timer';
 import { useToast } from '@/app/ui/use-toast';
@@ -32,6 +32,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface Props {
   workoutId: string;
+  resumeSessionId?: string;
 }
 
 type WorkoutLike =
@@ -135,7 +136,7 @@ function SortableExercise({
   );
 }
 
-export default function WorkoutClient({ workoutId }: Props) {
+export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
   const { toggle: toggleSidebar } = useSidebar();
   const [workout, setWorkout] = useState<WorkoutLike | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,6 +191,9 @@ export default function WorkoutClient({ workoutId }: Props) {
   type EditExercise = { name: string; sets?: { reps?: number; weight?: number }[]; exerciseId?: string; order?: number };
   const [editableExercises, setEditableExercises] = useState<EditExercise[]>([]);
 
+  // Track whether we've attempted to restore a resumed session (one-time check)
+  const [resumeLoaded, setResumeLoaded] = useState(!resumeSessionId);
+
   // Exercise picker modal open state
   const [pickerOpen, setPickerOpen] = useState(false);
   const { toast } = useToast();
@@ -208,9 +212,51 @@ export default function WorkoutClient({ workoutId }: Props) {
     return () => { mounted = false };
   }, []);
 
-  // Initialize editableExercises when workout (normalizedExercises) changes
-  // Initialize editableExercises and performed when workout (normalizedExercises) changes
+  // Restore session state from IndexedDB when resuming (one-time on mount)
   useEffect(() => {
+    if (!resumeSessionId || resumeLoaded) return;
+
+    (async () => {
+      try {
+        const session = await getActiveSession(resumeSessionId);
+        if (session) {
+          // Reuse the stored sessionId so autosave continues to the same session
+          sessionIdRef.current = session.sessionId;
+
+          // Restore exercises
+          const restoredExercises: EditExercise[] = session.exercises.map(ex => ({
+            name: ex.exerciseName,
+            exerciseId: ex.exerciseId || undefined,
+            order: ex.order,
+            sets: ex.sets.map(s => ({ reps: s.reps, weight: s.weight })),
+          }));
+          setEditableExercises(restoredExercises);
+
+          // Restore performed values
+          type PerformedVal = number | "";
+          const restoredPerformed = session.exercises.map(ex =>
+            ex.sets.map(s => ({
+              reps: (s.reps > 0 ? s.reps : "") as PerformedVal,
+              weight: (s.weight > 0 ? s.weight : "") as PerformedVal,
+            }))
+          );
+          setPerformed(restoredPerformed);
+        }
+      } catch (err) {
+        console.error('Failed to restore session:', err);
+      } finally {
+        setResumeLoaded(true);
+      }
+    })();
+  }, [resumeSessionId, resumeLoaded]);
+
+  // Initialize editableExercises and performed when workout changes (only if not resuming)
+  useEffect(() => {
+    // Skip initialization if we're still loading a resumed session
+    if (!resumeLoaded) return;
+    // Skip if we already have exercises from a resumed session
+    if (resumeSessionId && editableExercises.length > 0) return;
+
     const exercises = normalizedExercises.map((e) => ({ ...e }));
     setEditableExercises(exercises);
 
@@ -219,7 +265,7 @@ export default function WorkoutClient({ workoutId }: Props) {
     const initialPerformed = exercises.map((ex) => (ex.sets || []).map(() => ({ reps: "" as PerformedVal, weight: "" as PerformedVal })));
     setPerformed(initialPerformed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workout]);
+  }, [workout, resumeLoaded]);
 
   useEffect(() => {
     let mounted = true;

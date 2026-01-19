@@ -24,19 +24,19 @@ export const exercises = pgTable("exercises", {
   name: text("name").notNull(),
   description: text("description"),
   notes: text("notes"),
-  
+
   // Categorization fields
   bodyParts: text("body_parts").array().default(sql`'{}'::text[]`), // Array of body parts
   equipment: text("equipment").array().default(sql`'{}'::text[]`), // Array of equipment
   movementType: text("movement_type").default("unknown"), // "compound" | "isolation"
   movementPattern: text("movement_pattern").default("unknown"), // "push", "pull", "squat", "hinge", "carry", "locomotion", "rotation"
-  
+
   // Performance tracking (denormalized for quick access)
   lastPerformedAt: timestamp("last_performed_at"),
   bestWeight: integer("best_weight"), // Best single rep weight in lbs/kg
   bestVolume: integer("best_volume"), // Best volume (reps * weight) in a single set
   best1RM: integer("best_1rm"), // Estimated 1RM based on performance
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
@@ -54,11 +54,11 @@ export const workoutExercises = pgTable(
     order: integer("order").notNull(),
     plannedSets: integer("planned_sets"),
     plannedReps: integer("planned_reps"),
-    plannedWeight: integer("planned_weight"), 
+    plannedWeight: integer("planned_weight"),
     restTimeSeconds: integer("rest_time_seconds"),
-    notes: text("notes"), 
+    notes: text("notes"),
     isSuperset: boolean("is_superset").default(false),
-    supersetGroup: integer("superset_group"), 
+    supersetGroup: integer("superset_group"),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.workoutId, t.exerciseId] }),
@@ -77,7 +77,7 @@ export const workoutSessions = pgTable("workout_sessions", {
 export const sessionExercises = pgTable("session_exercises", {
   id: uuid("id").defaultRandom().primaryKey(),
   workoutSessionId: uuid("workout_session_id").notNull().references(() => workoutSessions.id, { onDelete: "cascade" }),
-  exerciseId: uuid("exercise_id").references(() => exercises.id, { onDelete: "cascade" }), 
+  exerciseId: uuid("exercise_id").references(() => exercises.id, { onDelete: "cascade" }),
   order: integer("order"),
   isSuperset: boolean("is_superset").default(false),
   supersetGroup: integer("superset_group"),
@@ -176,16 +176,6 @@ export const workoutSetRelations = relations(workoutSet, ({ one }) => ({
     references: [sessionExercises.id],
   }),
 }));
-
-export const pushSchedules = pgTable('push_schedules', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  subscription: text('subscription').notNull(), 
-  fireAt: timestamp('fire_at').notNull(),
-  sent: boolean('sent').default(false).notNull(),
-  sentAt: timestamp('sent_at'),
-  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
-});
 
 export const pushSubscriptions = pgTable('push_subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
