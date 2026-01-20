@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { exercises } from "@/lib/db/schema";
+import { exercises, userExerciseMetrics } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
-import { or, isNull, eq } from "drizzle-orm";
+import { or, isNull, eq, and } from "drizzle-orm";
 
 export async function GET() {
   const session = await auth();
@@ -11,11 +11,29 @@ export async function GET() {
   }
 
   try {
-    const allExercises = await db
-      .select()
+    const rows = await db
+      .select({
+        exercise: exercises,
+        metrics: userExerciseMetrics,
+      })
       .from(exercises)
-      // Filter: System exercises (userId is null) OR User's custom exercises
+      .leftJoin(
+        userExerciseMetrics,
+        and(
+          eq(userExerciseMetrics.exerciseId, exercises.id),
+          eq(userExerciseMetrics.userId, session.user.id)
+        )
+      )
       .where(or(isNull(exercises.userId), eq(exercises.userId, session.user.id)));
+
+    // Merge metrics into the exercise object
+    const allExercises = rows.map(({ exercise, metrics }) => ({
+      ...exercise,
+      bestWeight: metrics?.bestWeight ?? null,
+      bestVolume: metrics?.bestVolume ?? null,
+      best1RM: metrics?.best1RM ?? null,
+      lastPerformedAt: metrics?.lastPerformedAt ?? null,
+    }));
 
     return NextResponse.json(allExercises);
   } catch (error) {

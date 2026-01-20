@@ -71,6 +71,22 @@ export async function POST(request: Request) {
 
     if (setsToInsert.length > 0) {
       await db.insert(workoutSet).values(setsToInsert);
+
+      // Trigger metric updates asynchronously (fire and forget or await if critical)
+      // Here we await to ensure data consistency, but wrap in try-catch to not fail the response
+      try {
+        const uniqueExerciseIds = new Set(setsToInsert.map(s => s.exerciseId));
+        const { updateExerciseMetrics } = await import('@/lib/exercise-metrics');
+
+        await Promise.all(
+          Array.from(uniqueExerciseIds).map(exId =>
+            updateExerciseMetrics(exId, sessionUser.user.id!)
+          )
+        );
+      } catch (metricsErr) {
+        console.error("Failed to update exercise metrics:", metricsErr);
+        // Don't fail the request, just log the error
+      }
     }
 
     return NextResponse.json({ id: createdSession.id }, { status: 201 });

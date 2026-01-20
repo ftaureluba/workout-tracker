@@ -1,4 +1,4 @@
-import { text, pgTable, timestamp, primaryKey, integer, boolean, uuid } from "drizzle-orm/pg-core";
+import { text, pgTable, timestamp, primaryKey, integer, boolean, uuid, unique } from "drizzle-orm/pg-core";
 import { sql, relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -30,12 +30,6 @@ export const exercises = pgTable("exercises", {
   equipment: text("equipment").array().default(sql`'{}'::text[]`), // Array of equipment
   movementType: text("movement_type").default("unknown"), // "compound" | "isolation"
   movementPattern: text("movement_pattern").default("unknown"), // "push", "pull", "squat", "hinge", "carry", "locomotion", "rotation"
-
-  // Performance tracking (denormalized for quick access)
-  lastPerformedAt: timestamp("last_performed_at"),
-  bestWeight: integer("best_weight"), // Best single rep weight in lbs/kg
-  bestVolume: integer("best_volume"), // Best volume (reps * weight) in a single set
-  best1RM: integer("best_1rm"), // Estimated 1RM based on performance
 
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -195,3 +189,40 @@ export const pushJobs = pgTable('push_jobs', {
   createdAt: timestamp('created_at').default(sql`now()`).notNull(),
   sentAt: timestamp('sent_at'),
 });
+
+export const userExerciseMetrics = pgTable(
+  "user_exercise_metrics",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    exerciseId: uuid("exercise_id")
+      .notNull()
+      .references(() => exercises.id, { onDelete: "cascade" }),
+
+    // Personal stats
+    bestWeight: integer("best_weight"),
+    bestVolume: integer("best_volume"),
+    best1RM: integer("best_1rm"),
+    lastPerformedAt: timestamp("last_performed_at"),
+
+    updatedAt: timestamp("updated_at").default(sql`now()`),
+  },
+  (t) => ({
+    // Ensure one metric record per user per exercise
+    unq: unique().on(t.userId, t.exerciseId),
+  })
+);
+
+export const userExerciseMetricsRelations = relations(userExerciseMetrics, ({ one }) => ({
+  user: one(users, {
+    fields: [userExerciseMetrics.userId],
+    references: [users.id],
+  }),
+  exercise: one(exercises, {
+    fields: [userExerciseMetrics.exerciseId],
+    references: [exercises.id],
+  }),
+}));
+
