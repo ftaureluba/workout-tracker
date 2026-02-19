@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials";
 import { users } from "@/lib/db/schema";
 import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const {
   handlers,
@@ -25,26 +26,31 @@ export const {
       id: "credentials",
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         try {
-          if (!credentials?.email || !credentials?.password) {
-            console.log("Missing credentials");
+          if (!credentials?.username || !credentials?.password) {
             return null;
           }
 
-          console.log("Authorizing user:", credentials.email);
+          // Rate limit login attempts by username
+          const { success } = rateLimit(`login:${credentials.username}`, {
+            limit: 10,
+            windowMs: 60_000,
+          });
+          if (!success) {
+            throw new Error("Too many login attempts. Please try again later.");
+          }
 
           const user = await db
             .select()
             .from(users)
-            .where(eq(users.email, credentials.email as string))
+            .where(eq(users.username, credentials.username as string))
             .limit(1);
 
           if (!user.length) {
-            console.log("User not found");
             return null;
           }
 
@@ -54,11 +60,9 @@ export const {
           );
 
           if (!isValidPassword) {
-            console.log("Invalid password");
             return null;
           }
 
-          console.log("User authorized successfully");
           return {
             id: user[0].id.toString(),
             email: user[0].email,
@@ -88,5 +92,4 @@ export const {
   pages: {
     signIn: '/login',
   },
-  debug: true, // Remove this in production
 });

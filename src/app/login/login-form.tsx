@@ -10,7 +10,7 @@ import { verifyCredentials } from "@/lib/actions"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
-import { Mail, Lock, ArrowRight } from "lucide-react"
+import { User, Lock, ArrowRight } from "lucide-react"
 
 
 import { useRouter } from "next/navigation";
@@ -28,12 +28,12 @@ export default function LoginForm() {
 
   async function handleSubmit(formData: FormData) {
     setError("");
-    const email = formData.get("email") as string;
+    const username = formData.get("username") as string;
     const password = formData.get("password") as string;
-    const result = await verifyCredentials(email, password);
+    const result = await verifyCredentials(username, password);
     if (result.success) {
       await signIn("credentials", {
-        email,
+        username,
         password,
         callbackUrl: "/dashboard"
       });
@@ -48,7 +48,7 @@ export default function LoginForm() {
         <div className="text-center">
           <CardTitle className="font-bold text-card-foreground text-4xl">Bienvenido!</CardTitle>
           <CardDescription className="text-muted-foreground mt-2 text-base">
-            Inicia sesion para continuar
+            Inicia sesión para continuar
           </CardDescription>
         </div>
       </CardHeader>
@@ -57,15 +57,16 @@ export default function LoginForm() {
       <CardContent className="space-y-6">
         <form action={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-card-foreground">
-              Email
+            <Label htmlFor="username" className="text-sm font-medium text-card-foreground">
+              Usuario
             </Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                id="email"
-                type="email"
-                name="email"
+                id="username"
+                type="text"
+                name="username"
+                placeholder="Tu nombre de usuario"
                 className="pl-10 h-12 bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200"
                 required
               />
@@ -81,6 +82,8 @@ export default function LoginForm() {
               <Input
                 id="password"
                 name="password"
+                type="password"
+                placeholder="Tu contraseña"
                 className="pl-10 pr-10 h-12 bg-input border-border focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200"
                 required
               />
@@ -92,24 +95,21 @@ export default function LoginForm() {
               <input type="checkbox" className="rounded border-border text-primary focus:ring-ring focus:ring-2" />
               <span className="text-muted-foreground">Recordarme</span>
             </label>
-            <a href="#" className="text-primary hover:text-primary/80 font-medium transition-colors">
-             Olvidaste la contraseña?
-            </a>
           </div>
-                
-            <LoginButton />
-            <div
-              className="flex h-8 items-end space-x-1"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {error && (
-                <>
-                  <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
-                    <p className="text-sm text-red-500">{error || "An error ocurred."}</p>
-                  </>
-              )}
-            </div>
+
+          <LoginButton />
+          <div
+            className="flex h-8 items-end space-x-1"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {error && (
+              <>
+                <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+                <p className="text-sm text-red-500">{error || "An error ocurred."}</p>
+              </>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>
@@ -121,10 +121,10 @@ function LoginButton() {
 
   return (
     <Button aria-disabled={pending}
-    className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
-          >
-            Iniciar sesion
-            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-          </Button>
+      className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+    >
+      Iniciar sesión
+      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+    </Button>
   );
 }

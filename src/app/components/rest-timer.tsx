@@ -10,9 +10,10 @@ import { Button } from "@/app/ui/button"
 interface Props {
   defaultSeconds?: number
   label?: string
+  autoStart?: boolean
 }
 
-export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props) {
+export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoStart = false }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [seconds, setSeconds] = useState<number>(defaultSeconds)
   const [running, setRunning] = useState(false)
@@ -34,6 +35,17 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
   useEffect(() => {
     setRemaining(seconds)
   }, [seconds])
+
+  // Auto-start: when autoStart flips to true, open the modal and start the timer
+  const prevAutoStartRef = useRef(false)
+  useEffect(() => {
+    if (autoStart && !prevAutoStartRef.current && !running) {
+      setIsOpen(true)
+      startWith(seconds)
+    }
+    prevAutoStartRef.current = autoStart
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart])
 
   useEffect(() => {
     if (running && endAtRef.current) {

@@ -17,6 +17,7 @@ type SessionItem = {
   workoutName?: string | null;
   createdAt?: string | null;
   exercisesCount?: number;
+  durationMinutes?: number | null;
 };
 
 interface HistorialClientProps {
@@ -173,10 +174,16 @@ export default function HistorialClient({ sessions, frequencyData, exercises }: 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <div className="font-semibold text-lg text-primary">{s.workoutName ?? "Ad-hoc workout"}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
                           <span>{formatDate(s.createdAt)}</span>
                           <span>•</span>
                           <span>{s.exercisesCount ?? 0} exercises</span>
+                          {s.durationMinutes != null && s.durationMinutes > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{s.durationMinutes} min</span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">

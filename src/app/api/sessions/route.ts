@@ -21,6 +21,8 @@ export async function POST(request: Request) {
     const [createdSession] = await db.insert(workoutSessions).values({
       userId: sessionUser.user.id,
       workoutId: body.workoutId ?? null,
+      startedAt: body.startedAt ? new Date(body.startedAt) : null,
+      endedAt: body.endedAt ? new Date(body.endedAt) : null,
       notes: null,
     }).returning();
 

@@ -54,6 +54,7 @@ export interface ActiveSession {
   workoutId: string | null;
   workoutName: string;
   startedAt: string;
+  endedAt?: string;
   lastSaved: string;
   exercises: SessionExercise[];
 }

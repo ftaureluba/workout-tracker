@@ -26,11 +26,13 @@ async function seed() {
       const newUsers = await db.insert(users).values([
         {
           name: 'John Doe',
+          username: 'johndoe',
           email: 'john@example.com',
           password: await bcrypt.hash('password123', 10),
         },
         {
           name: 'Jane Smith',
+          username: 'janesmith',
           email: 'jane@example.com',
           password: await bcrypt.hash('password123', 10),
         },

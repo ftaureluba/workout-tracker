@@ -11,6 +11,7 @@ import { Menu, GripVertical } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebar';
 import { useRouter } from "next/navigation";
 import type { Workout, WorkoutExercise, ActiveSession } from "@/lib/types";
+import { getLastPerformance, type LastPerformance } from "@/app/actions/last-performance";
 import {
   DndContext,
   closestCenter,
@@ -47,7 +48,9 @@ function SortableExercise({
   performed,
   updatePerformed,
   removeSet,
-  addSet
+  addSet,
+  lastPerformance,
+  restTimeSeconds,
 }: {
   id: string;
   exercise: any;
@@ -57,7 +60,35 @@ function SortableExercise({
   updatePerformed: (exIndex: number, setIndex: number, field: "reps" | "weight", value: string) => void;
   removeSet: (exIndex: number, setIndex: number) => void;
   addSet: (exIndex: number) => void;
+  lastPerformance?: LastPerformance;
+  restTimeSeconds?: number;
 }) {
+  // Track which set was most recently completed for auto-starting the rest timer
+  const [autoStartSetIdx, setAutoStartSetIdx] = React.useState<number | null>(null);
+  const prevPerformedRef = React.useRef<any[]>([]);
+
+  // Detect set completion: when both reps and weight transition from empty to filled
+  React.useEffect(() => {
+    const currentSets = performed?.[idx] ?? [];
+    const prevSets = prevPerformedRef.current;
+
+    for (let s = 0; s < currentSets.length; s++) {
+      const curr = currentSets[s];
+      const prev = prevSets[s];
+      const isComplete = typeof curr?.reps === 'number' && curr.reps > 0 && typeof curr?.weight === 'number' && curr.weight > 0;
+      const wasComplete = prev && typeof prev?.reps === 'number' && prev.reps > 0 && typeof prev?.weight === 'number' && prev.weight > 0;
+
+      if (isComplete && !wasComplete) {
+        setAutoStartSetIdx(s);
+        // Reset after a short delay so the timer can detect the edge
+        setTimeout(() => setAutoStartSetIdx(null), 500);
+        break;
+      }
+    }
+
+    // Deep copy for next comparison
+    prevPerformedRef.current = currentSets.map((s: any) => ({ ...s }));
+  }, [performed, idx]);
   const {
     attributes,
     listeners,
@@ -85,6 +116,18 @@ function SortableExercise({
         </div>
         <button onClick={() => removeExercise(idx)} className="text-sm text-red-500 ml-2">Remove Exercise</button>
       </div>
+      {/* Last performance hint */}
+      {lastPerformance && (
+        <div className="mb-3 px-2 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-sm text-muted-foreground">
+          <span className="text-primary font-medium">Last ({lastPerformance.date}):</span>{" "}
+          {lastPerformance.sets.map((s, i) => (
+            <span key={i}>
+              {i > 0 && " · "}
+              {s.reps}×{s.weight}kg
+            </span>
+          ))}
+        </div>
+      )}
       <div className="space-y-2">
         {exercise.sets && exercise.sets.length > 0 ? (
           exercise.sets.map((set: any, setIdx: number) => (
@@ -114,6 +157,7 @@ function SortableExercise({
                   value={performed?.[idx]?.[setIdx]?.weight ?? ""}
                   onChange={(e) => updatePerformed(idx, setIdx, 'weight', e.target.value)}
                   min={0}
+                  step={0.5}
                   aria-label="Weight"
                   placeholder={typeof set.weight === 'number' ? String(set.weight) : ''}
                 />
@@ -121,7 +165,11 @@ function SortableExercise({
 
               </div>
               <div className="ml-4">
-                <RestTimer defaultSeconds={60} label={`Rest ${setIdx + 1}`} />
+                <RestTimer
+                  defaultSeconds={restTimeSeconds ?? 60}
+                  label={`Rest ${setIdx + 1}`}
+                  autoStart={autoStartSetIdx === setIdx}
+                />
               </div>
             </div>
           ))
@@ -171,7 +219,7 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
   }
 
   // Normalize exercises: either workout.exercises (client shape) or workout.workoutExercises
-  const normalizedExercises: { name: string; sets?: { reps?: number; weight?: number }[]; exerciseId?: string; order?: number }[] =
+  const normalizedExercises: { name: string; sets?: { reps?: number; weight?: number }[]; exerciseId?: string; order?: number; restTimeSeconds?: number }[] =
     hasExercisesArray(workout)
       ? workout.exercises
       : hasWorkoutExercises(workout)
@@ -183,12 +231,12 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
             weight: typeof we.plannedWeight === "number" ? we.plannedWeight : undefined,
           }));
 
-          return { name: we.exercise?.name ?? "Unnamed exercise", sets, exerciseId: we.exerciseId, order: we.order };
+          return { name: we.exercise?.name ?? "Unnamed exercise", sets, exerciseId: we.exerciseId, order: we.order, restTimeSeconds: we.restTimeSeconds ?? undefined };
         })
         : [];
 
   // Editable exercises state: allows adding/removing sets/exercises on the fly
-  type EditExercise = { name: string; sets?: { reps?: number; weight?: number }[]; exerciseId?: string; order?: number };
+  type EditExercise = { name: string; sets?: { reps?: number; weight?: number }[]; exerciseId?: string; order?: number; restTimeSeconds?: number };
   const [editableExercises, setEditableExercises] = useState<EditExercise[]>([]);
 
   // Track whether we've attempted to restore a resumed session (one-time check)
@@ -198,6 +246,7 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { toast } = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [lastPerformanceData, setLastPerformanceData] = useState<Record<string, LastPerformance>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -266,6 +315,20 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
     setPerformed(initialPerformed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workout, resumeLoaded]);
+
+  // Fetch last performance data for the loaded exercises
+  useEffect(() => {
+    const exerciseIds = editableExercises
+      .map((e) => e.exerciseId)
+      .filter((id): id is string => !!id);
+    if (exerciseIds.length === 0) return;
+
+    let mounted = true;
+    getLastPerformance(exerciseIds).then((data) => {
+      if (mounted) setLastPerformanceData(data);
+    }).catch(console.error);
+    return () => { mounted = false };
+  }, [editableExercises]);
 
   useEffect(() => {
     let mounted = true;
@@ -535,6 +598,7 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
         workoutId: ((workout as Record<string, unknown>)['id'] as string) ?? workoutId,
         workoutName: ((workout as Record<string, unknown>)['name'] as string) ?? (workout as Workout).name,
         startedAt,
+        endedAt: now,
         lastSaved: now,
         exercises: editableExercises.map((ex, exIdx) => ({
           exerciseId: ex.exerciseId ?? "",
@@ -710,6 +774,8 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
                   updatePerformed={updatePerformed}
                   removeSet={removeSet}
                   addSet={addSet}
+                  lastPerformance={exercise.exerciseId ? lastPerformanceData[exercise.exerciseId] : undefined}
+                  restTimeSeconds={exercise.restTimeSeconds}
                 />
               ))}
             </SortableContext>

@@ -1,10 +1,11 @@
-import { text, pgTable, timestamp, primaryKey, integer, boolean, uuid, unique } from "drizzle-orm/pg-core";
+import { text, pgTable, timestamp, primaryKey, integer, real, boolean, uuid, unique } from "drizzle-orm/pg-core";
 import { sql, relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  email: text("email").notNull().unique(),
+  username: text("username").notNull().unique(),
+  email: text("email").unique(),
   password: text("password").notNull(),
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
@@ -48,7 +49,7 @@ export const workoutExercises = pgTable(
     order: integer("order").notNull(),
     plannedSets: integer("planned_sets"),
     plannedReps: integer("planned_reps"),
-    plannedWeight: integer("planned_weight"),
+    plannedWeight: real("planned_weight"),
     restTimeSeconds: integer("rest_time_seconds"),
     notes: text("notes"),
     isSuperset: boolean("is_superset").default(false),
@@ -64,6 +65,8 @@ export const workoutSessions = pgTable("workout_sessions", {
   notes: text("notes"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   workoutId: uuid("workout_id").references(() => workouts.id, { onDelete: "cascade" }),
 });
@@ -81,7 +84,7 @@ export const sessionExercises = pgTable("session_exercises", {
 export const workoutSet = pgTable("workout_set", {
   id: uuid("id").defaultRandom().primaryKey(),
   reps: integer("reps").notNull(),
-  weight: integer("weight").notNull(),
+  weight: real("weight").notNull(),
   notes: text("notes"),
   completed: boolean("completed").default(false),
   createdAt: timestamp("created_at").default(sql`now()`),
@@ -202,9 +205,9 @@ export const userExerciseMetrics = pgTable(
       .references(() => exercises.id, { onDelete: "cascade" }),
 
     // Personal stats
-    bestWeight: integer("best_weight"),
-    bestVolume: integer("best_volume"),
-    best1RM: integer("best_1rm"),
+    bestWeight: real("best_weight"),
+    bestVolume: real("best_volume"),
+    best1RM: real("best_1rm"),
     lastPerformedAt: timestamp("last_performed_at"),
 
     updatedAt: timestamp("updated_at").default(sql`now()`),

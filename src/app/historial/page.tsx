@@ -26,12 +26,19 @@ export default async function HistorialPage() {
     getUserExercises(),
   ]);
 
-  const serializedSessions = sessions.map((s) => ({
-    id: s.id,
-    workoutName: s.workout?.name ?? null,
-    createdAt: s.createdAt ? s.createdAt.toISOString() : null,
-    exercisesCount: s.sessionExercises?.length ?? 0,
-  }));
+  const serializedSessions = sessions.map((s) => {
+    let durationMinutes: number | null = null;
+    if (s.startedAt && s.endedAt) {
+      durationMinutes = Math.round((s.endedAt.getTime() - s.startedAt.getTime()) / 60_000);
+    }
+    return {
+      id: s.id,
+      workoutName: s.workout?.name ?? null,
+      createdAt: s.createdAt ? s.createdAt.toISOString() : null,
+      exercisesCount: s.sessionExercises?.length ?? 0,
+      durationMinutes,
+    };
+  });
 
   return (
     <HistorialClient
