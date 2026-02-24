@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
-import { ScrollArea } from "../ui/scroll-area"
 import { Search, X, Loader2 } from "lucide-react"
 
 type Exercise = {
@@ -307,7 +306,7 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
 
         {/* Exercise List */}
         <div className="flex-1 mt-4 min-h-0 border-t">
-          <ScrollArea className="h-full">
+          <div className="h-full overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
             <div className="px-0 py-0">
               {loading ? (
                 <div className="text-center py-12 text-muted-foreground">
@@ -370,7 +369,7 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
                 ))
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
