@@ -143,8 +143,8 @@ export default function RoutineEditor({ isOpen, onClose, initial, onSaved, onDel
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="bg-card text-card-foreground rounded-lg p-4 w-full max-w-3xl z-10 shadow-lg">
-        <div className="flex items-center justify-between mb-3">
+      <div className="bg-card text-card-foreground rounded-lg p-4 w-full max-w-3xl z-10 shadow-lg max-h-[90vh] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent flex flex-col">
+        <div className="sticky top-0 bg-card flex items-center justify-between mb-3 pb-3 border-b z-10">
           <h3 className="text-lg font-semibold">{initial ? "Edit Routine" : "Create Routine"}</h3>
           <div className="flex gap-2">
             {initial?.id && (
