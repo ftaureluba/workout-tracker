@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
-import { Search, X, Loader2 } from "lucide-react"
+import { Search, X, Loader2, ChevronDown } from "lucide-react"
 
 type Exercise = {
   id: string
@@ -40,6 +40,7 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [selectedMovementType, setSelectedMovementType] = useState<string | null>(null)
   const [selectedMovementPattern, setSelectedMovementPattern] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
 
   // Fetch exercises when dialog opens
   useEffect(() => {
@@ -157,9 +158,10 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
           </div>
         </DialogHeader>
 
-        <div className="px-6 space-y-4 shrink-0">
-          {/* Search */}
-          <div className="relative">
+        <div className="px-6 space-y-3 shrink-0">
+          {/* Search + Filter Toggle */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
@@ -169,8 +171,21 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
               className="pl-10 bg-muted/50 border-input"
               disabled={loading}
             />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="shrink-0"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              Filter
+            </Button>
           </div>
 
+          {/* Filters Section - Collapsible */}
+          {showFilters && (
+            <div className="space-y-3 border-t pt-3">
           {/* Body Part Filters */}
           {filterOptions.bodyParts.length > 0 && (
             <div className="space-y-2">
@@ -301,6 +316,8 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
               <X className="h-4 w-4 mr-2" />
               Clear all filters
             </Button>
+          )}
+            </div>
           )}
         </div>
 
