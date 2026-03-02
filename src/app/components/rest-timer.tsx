@@ -10,10 +10,9 @@ import { Button } from "@/app/ui/button"
 interface Props {
   defaultSeconds?: number
   label?: string
-  autoStart?: boolean
 }
 
-export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoStart = false }: Props) {
+export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [seconds, setSeconds] = useState<number>(defaultSeconds)
   const [running, setRunning] = useState(false)
@@ -22,6 +21,7 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoSta
   const [editingSeconds, setEditingSeconds] = useState(false)
   const [tempMinutes, setTempMinutes] = useState(Math.floor(defaultSeconds / 60).toString())
   const [tempSeconds, setTempSeconds] = useState((defaultSeconds % 60).toString())
+  const [finished, setFinished] = useState(false)
   const timerRef = useRef<number | null>(null)
   // Store the end timestamp so we can calculate remaining time accurately
   // even after the app was backgrounded
@@ -35,17 +35,6 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoSta
   useEffect(() => {
     setRemaining(seconds)
   }, [seconds])
-
-  // Auto-start: when autoStart flips to true, open the modal and start the timer
-  const prevAutoStartRef = useRef(false)
-  useEffect(() => {
-    if (autoStart && !prevAutoStartRef.current && !running) {
-      setIsOpen(true)
-      startWith(seconds)
-    }
-    prevAutoStartRef.current = autoStart
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart])
 
   useEffect(() => {
     if (running && endAtRef.current) {
@@ -106,30 +95,22 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoSta
   }
 
   const startWith = async (secs: number) => {
+    setFinished(false)
     // Request permission proactively so we can show notifications later
     await requestNotificationPermission().catch(() => { })
 
     // Try to obtain a PushSubscription so we can schedule a server push while backgrounded.
     try {
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string | undefined
-      console.log("[RestTimer] startWith: vapidKey present?", !!vapidKey)
       let subscription = await getExistingSubscription()
-      console.log("[RestTimer] startWith: existing subscription?", !!subscription)
       if (!subscription && vapidKey) {
         subscription = await subscribeToPush(vapidKey)
-        console.log("[RestTimer] startWith: new subscription obtained?", !!subscription)
-        if (subscription) {
-          toast({ title: "Push subscribed", description: "Subscription obtained" })
-        } else {
-          toast({ title: "No subscription", description: "subscribeToPush returned null" })
-        }
       }
 
       if (subscription) {
-        // Ask server to schedule a push for `secs` from now. Server will persist the schedule.
-        console.log("[RestTimer] Scheduling push for", secs, "seconds from now")
+        // Ask server to schedule a push for `secs` from now.
         try {
-          const scheduleRes = await fetch("/api/push/schedule", {
+          await fetch("/api/push/schedule", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -139,24 +120,12 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoSta
               delayMs: secs * 1000,
             }),
           })
-          const scheduleData = await scheduleRes.json().catch(() => ({}))
-          console.log("[RestTimer] /api/push/schedule response:", scheduleRes.status, scheduleData)
-          if (!scheduleRes.ok) {
-            toast({ title: "Schedule failed", description: `HTTP ${scheduleRes.status}: ${JSON.stringify(scheduleData)}` })
-          } else {
-            toast({ title: "Push scheduled", description: `Will fire in ${secs}s via worker` })
-          }
         } catch (scheduleErr) {
           console.error("[RestTimer] /api/push/schedule error:", scheduleErr)
-          toast({ title: "Schedule error", description: String(scheduleErr) })
         }
-      } else {
-        console.log("[RestTimer] No subscription available, skipping server schedule")
-        toast({ title: "No push subscription", description: "Timer will only notify if app stays open" })
       }
     } catch (err) {
       console.error("[RestTimer] Push prep failed:", err)
-      toast({ title: "Push prep failed", description: String(err) })
     }
 
     // Ensure remaining is in sync with the requested start seconds and
@@ -194,7 +163,6 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoSta
   const onTimerEnd = async () => {
     // The scheduled push via Cloudflare DO should have already fired.
     // We just show a local notification (for desktop) and toast for in-app feedback.
-    // No server push here to avoid duplicate notifications.
     try {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(`${label} finished`, { body: "Time is up", icon: "/icons/icon-192x192.png" })
@@ -207,9 +175,18 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoSta
 
     // Ensure UI reflects stopped state
     setRunning(false)
+    setFinished(true)
+    // Reset the finished indicator after 3 seconds
+    setTimeout(() => setFinished(false), 3000)
   }
 
   if (!isOpen) {
+    const timerButtonClass = running
+      ? "inline-flex h-9 w-9 p-0 ring-2 ring-blue-400 animate-pulse"
+      : finished
+        ? "inline-flex h-9 w-9 p-0 ring-2 ring-emerald-400 bg-emerald-500/20"
+        : "inline-flex h-9 w-9 p-0"
+
     return (
       <Button
         onClick={(e) => {
@@ -219,9 +196,9 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest", autoSta
         variant="secondary"
         size="icon"
         aria-label="Open rest timer"
-        className="inline-flex h-9 w-9 p-0"
+        className={timerButtonClass}
       >
-        <Check className="w-5 h-5" strokeWidth={3} />
+        <Check className={`w-5 h-5 ${finished ? 'text-emerald-400' : ''}`} strokeWidth={3} />
       </Button>
     )
   }

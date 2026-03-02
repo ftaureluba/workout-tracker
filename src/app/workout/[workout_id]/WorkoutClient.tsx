@@ -7,7 +7,7 @@ import RestTimer from '@/app/components/rest-timer';
 import { useToast } from '@/app/ui/use-toast';
 import { subscribeToPush, getExistingSubscription, unsubscribePush, requestNotificationPermission } from '@/lib/push';
 import { Button } from '@/app/ui/button';
-import { Menu, GripVertical } from 'lucide-react';
+import { Menu, GripVertical, Loader2 } from 'lucide-react';
 import { useSidebar } from '@/lib/sidebar';
 import { useRouter } from "next/navigation";
 import type { Workout, WorkoutExercise, ActiveSession } from "@/lib/types";
@@ -63,32 +63,6 @@ function SortableExercise({
   lastPerformance?: LastPerformance;
   restTimeSeconds?: number;
 }) {
-  // Track which set was most recently completed for auto-starting the rest timer
-  const [autoStartSetIdx, setAutoStartSetIdx] = React.useState<number | null>(null);
-  const prevPerformedRef = React.useRef<any[]>([]);
-
-  // Detect set completion: when both reps and weight transition from empty to filled
-  React.useEffect(() => {
-    const currentSets = performed?.[idx] ?? [];
-    const prevSets = prevPerformedRef.current;
-
-    for (let s = 0; s < currentSets.length; s++) {
-      const curr = currentSets[s];
-      const prev = prevSets[s];
-      const isComplete = typeof curr?.reps === 'number' && curr.reps > 0 && typeof curr?.weight === 'number' && curr.weight > 0;
-      const wasComplete = prev && typeof prev?.reps === 'number' && prev.reps > 0 && typeof prev?.weight === 'number' && prev.weight > 0;
-
-      if (isComplete && !wasComplete) {
-        setAutoStartSetIdx(s);
-        // Reset after a short delay so the timer can detect the edge
-        setTimeout(() => setAutoStartSetIdx(null), 500);
-        break;
-      }
-    }
-
-    // Deep copy for next comparison
-    prevPerformedRef.current = currentSets.map((s: any) => ({ ...s }));
-  }, [performed, idx]);
   const {
     attributes,
     listeners,
@@ -168,7 +142,6 @@ function SortableExercise({
                 <RestTimer
                   defaultSeconds={restTimeSeconds ?? 60}
                   label={`Rest ${setIdx + 1}`}
-                  autoStart={autoStartSetIdx === setIdx}
                 />
               </div>
             </div>
@@ -247,6 +220,7 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
   const { toast } = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [lastPerformanceData, setLastPerformanceData] = useState<Record<string, LastPerformance>>({});
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -585,6 +559,8 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
 
 
   const handleEndWorkout = async () => {
+    if (finishing) return;
+    setFinishing(true);
     try {
       // Reuse the persistent session id (generated when the component mounted)
       // to avoid creating a new one here and to ensure autosave/final save use
@@ -648,6 +624,7 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
     } catch (err) {
       console.error('Failed to end workout', err);
       alert('Failed to save workout session.');
+      setFinishing(false);
     }
   };
 
@@ -792,8 +769,15 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
         <button onClick={handleEndWorkout}
-          style={{ 'backgroundColor': "#1C6E8C" }}
-          className="w-full h-12 text-white font-semibold rounded-lg">End Workout</button>
+          disabled={finishing}
+          style={{ 'backgroundColor': finishing ? '#94a3b8' : '#1C6E8C' }}
+          className="w-full h-12 text-white font-semibold rounded-lg flex items-center justify-center gap-2 disabled:cursor-not-allowed">
+          {finishing ? (
+            <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
+          ) : (
+            'End Workout'
+          )}
+        </button>
       </div>
     </>
   );

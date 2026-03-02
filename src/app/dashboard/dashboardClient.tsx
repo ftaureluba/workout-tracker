@@ -167,11 +167,18 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
 
   const handleSavedWorkout = (w: Workout) => {
     setWorkouts((prev) => {
-      const found = prev.find((p) => p.id === w.id);
-      if (found) {
-        return prev.map((p) => (p.id === w.id ? w : p));
-      }
-      return [w, ...prev];
+      const updated = (() => {
+        const found = prev.find((p) => p.id === w.id);
+        if (found) {
+          return prev.map((p) => (p.id === w.id ? w : p));
+        }
+        return [w, ...prev];
+      })();
+      // Sync updated list to IndexedDB so the workout page gets fresh data
+      saveWorkoutsToCache(updated).catch((err) =>
+        console.error("Failed to update workout cache:", err)
+      );
+      return updated;
     });
   };
 
