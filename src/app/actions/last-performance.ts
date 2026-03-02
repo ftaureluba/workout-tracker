@@ -108,3 +108,45 @@ export async function getLastPerformance(
 
     return result;
 }
+
+/**
+ * Fetches the most recent session date for each workout ID.
+ * Returns a map of workoutId -> ISO date string.
+ */
+export async function getLastPerformedDates(
+    workoutIds: string[]
+): Promise<Record<string, string>> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return {};
+    }
+
+    if (workoutIds.length === 0) return {};
+
+    const uniqueIds = [...new Set(workoutIds)];
+
+    const rows = await db
+        .select({
+            workoutId: workoutSessions.workoutId,
+            createdAt: workoutSessions.createdAt,
+        })
+        .from(workoutSessions)
+        .where(
+            and(
+                eq(workoutSessions.userId, session.user.id),
+                inArray(workoutSessions.workoutId, uniqueIds)
+            )
+        )
+        .orderBy(desc(workoutSessions.createdAt));
+
+    // Keep only the most recent session per workout (first appearance since ordered desc)
+    const result: Record<string, string> = {};
+    for (const row of rows) {
+        if (!row.workoutId || !row.createdAt) continue;
+        if (!result[row.workoutId]) {
+            result[row.workoutId] = row.createdAt.toISOString();
+        }
+    }
+
+    return result;
+}

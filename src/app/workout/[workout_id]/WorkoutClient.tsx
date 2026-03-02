@@ -79,6 +79,19 @@ function SortableExercise({
     position: 'relative' as const,
   };
 
+  // Compute relative date for last performance
+  const lastDateLabel = (() => {
+    if (!lastPerformance?.date) return null;
+    const date = new Date(lastPerformance.date);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return `${Math.floor(diffDays / 30)}mo ago`;
+  })();
+
   return (
     <section ref={setNodeRef} style={style} className={`bg-muted/50 rounded-xl p-4 ${isDragging ? 'opacity-50 ring-2 ring-primary' : ''}`}>
       <div className="flex items-center justify-between mb-2">
@@ -86,66 +99,66 @@ function SortableExercise({
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none p-1 hover:bg-black/10 rounded">
             <GripVertical className="h-5 w-5 text-gray-400" />
           </div>
-          <div className="font-semibold">{exercise.name}</div>
+          <div>
+            <div className="font-semibold">{exercise.name}</div>
+            {lastDateLabel && (
+              <div className="text-xs text-muted-foreground">Last: {lastDateLabel}</div>
+            )}
+          </div>
         </div>
         <button onClick={() => removeExercise(idx)} className="text-sm text-red-500 ml-2">Remove Exercise</button>
       </div>
-      {/* Last performance hint */}
-      {lastPerformance && (
-        <div className="mb-3 px-2 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-sm text-muted-foreground">
-          <span className="text-primary font-medium">Last ({lastPerformance.date}):</span>{" "}
-          {lastPerformance.sets.map((s, i) => (
-            <span key={i}>
-              {i > 0 && " · "}
-              {s.reps}×{s.weight}kg
-            </span>
-          ))}
-        </div>
-      )}
       <div className="space-y-2">
         {exercise.sets && exercise.sets.length > 0 ? (
-          exercise.sets.map((set: any, setIdx: number) => (
-            <div
-              key={setIdx}
-              className="flex items-center justify-between bg-background rounded-lg px-3 py-2 border"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">Set {setIdx + 1}</span>
-                <button onClick={() => removeSet(idx, setIdx)} className="text-sm text-red-500">–</button>
-              </div>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="number"
-                  className="w-14 px-2 py-1 rounded border text-center text-base"
-                  value={performed?.[idx]?.[setIdx]?.reps ?? ""}
-                  onChange={(e) => updatePerformed(idx, setIdx, 'reps', e.target.value)}
-                  min={0}
-                  aria-label="Reps"
-                  placeholder={typeof set.reps === 'number' ? String(set.reps) : ''}
-                />
-                <span className="text-sm text-muted-foreground">reps</span>
+          exercise.sets.map((set: any, setIdx: number) => {
+            // Determine placeholders: prefer last-performance values, fall back to planned
+            const lastSet = lastPerformance?.sets?.[setIdx];
+            const repsPlaceholder = lastSet?.reps != null ? String(lastSet.reps) : (typeof set.reps === 'number' ? String(set.reps) : '');
+            const weightPlaceholder = lastSet?.weight != null ? String(lastSet.weight) : (typeof set.weight === 'number' ? String(set.weight) : '');
 
-                <input
-                  type="number"
-                  className="w-16 px-2 py-1 rounded border text-center text-base"
-                  value={performed?.[idx]?.[setIdx]?.weight ?? ""}
-                  onChange={(e) => updatePerformed(idx, setIdx, 'weight', e.target.value)}
-                  min={0}
-                  step={0.5}
-                  aria-label="Weight"
-                  placeholder={typeof set.weight === 'number' ? String(set.weight) : ''}
-                />
-                <span className="text-sm text-muted-foreground">kg</span>
+            return (
+              <div
+                key={setIdx}
+                className="flex items-center justify-between bg-background rounded-lg px-3 py-2 border"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">Set {setIdx + 1}</span>
+                  <button onClick={() => removeSet(idx, setIdx)} className="text-sm text-red-500">–</button>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    className="w-14 px-2 py-1 rounded border text-center text-base"
+                    value={performed?.[idx]?.[setIdx]?.reps ?? ""}
+                    onChange={(e) => updatePerformed(idx, setIdx, 'reps', e.target.value)}
+                    min={0}
+                    aria-label="Reps"
+                    placeholder={repsPlaceholder}
+                  />
+                  <span className="text-sm text-muted-foreground">reps</span>
 
+                  <input
+                    type="number"
+                    className="w-16 px-2 py-1 rounded border text-center text-base"
+                    value={performed?.[idx]?.[setIdx]?.weight ?? ""}
+                    onChange={(e) => updatePerformed(idx, setIdx, 'weight', e.target.value)}
+                    min={0}
+                    step={0.5}
+                    aria-label="Weight"
+                    placeholder={weightPlaceholder}
+                  />
+                  <span className="text-sm text-muted-foreground">kg</span>
+
+                </div>
+                <div className="ml-4">
+                  <RestTimer
+                    defaultSeconds={restTimeSeconds ?? 60}
+                    label={`Rest ${setIdx + 1}`}
+                  />
+                </div>
               </div>
-              <div className="ml-4">
-                <RestTimer
-                  defaultSeconds={restTimeSeconds ?? 60}
-                  label={`Rest ${setIdx + 1}`}
-                />
-              </div>
-            </div>
-          ))
+            )
+          })
         ) : (
           <div className="p-3 bg-background rounded-lg border text-sm text-muted-foreground">No sets available</div>
         )}
@@ -156,6 +169,7 @@ function SortableExercise({
     </section>
   );
 }
+
 
 export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
   const { toggle: toggleSidebar } = useSidebar();

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboardClient";
 import type { Workout } from "@/lib/types";
 import { cookies } from "next/headers";
+import { getLastPerformedDates } from "@/app/actions/last-performance";
 
 
 const baseUrl =
@@ -14,7 +15,7 @@ const baseUrl =
 
 export default async function DashboardPage() {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     redirect("/login");
   }
@@ -24,11 +25,15 @@ export default async function DashboardPage() {
   const response = await fetch(`${baseUrl}/api/dashboard`, {
     cache: "no-store",
     headers: {
-      Cookie: cookieHeader, 
+      Cookie: cookieHeader,
     },
   });
   console.log("Response status:", response.status, response);
   const workouts: Workout[] = await response.json();
 
-  return <DashboardClient workouts={workouts} userId={session.user.id} />;
+  // Fetch "last performed" dates for all workout IDs
+  const workoutIds = workouts.map((w) => w.id);
+  const lastPerformedMap = await getLastPerformedDates(workoutIds);
+
+  return <DashboardClient workouts={workouts} userId={session.user.id} lastPerformedMap={lastPerformedMap} />;
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/app/ui/button";
-import { Menu, Calendar, TrendingUp } from "lucide-react";
+import { Menu, Calendar, TrendingUp, Trash2 } from "lucide-react";
 import { useSidebar } from "@/lib/sidebar";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/ui/tabs";
@@ -32,6 +32,41 @@ export default function HistorialClient({ sessions, frequencyData, exercises }: 
   const [historyData, setHistoryData] = useState<ExerciseHistoryPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [metric, setMetric] = useState<"oneRM" | "volume" | "weight">("oneRM");
+
+  // Track the local sessions to allow optimistic deletion without a full page reload
+  const [localSessions, setLocalSessions] = useState<SessionItem[]>(sessions);
+
+  // Sync with prop changes
+  useEffect(() => {
+    setLocalSessions(sessions);
+  }, [sessions]);
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!window.confirm("Are you sure you want to delete this workout? This action cannot be undone and will remove it from your history.")) {
+      return;
+    }
+
+    // Optimistically remove from UI
+    setLocalSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: sessionId }),
+      });
+
+      if (!res.ok) {
+        // Revert on failure
+        setLocalSessions(sessions);
+        alert("Failed to delete workout session.");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      setLocalSessions(sessions);
+      alert("Failed to delete workout session.");
+    }
+  };
 
   const formatDate = (iso?: string | null) => {
     if (!iso) return "-";
@@ -160,7 +195,7 @@ export default function HistorialClient({ sessions, frequencyData, exercises }: 
           </TabsContent>
 
           <TabsContent value="log">
-            {sessions.length === 0 ? (
+            {localSessions.length === 0 ? (
               <div className="p-12 text-center bg-card rounded-lg border border-dashed">
                 <p className="text-muted-foreground mb-4">No past workouts recorded yet.</p>
                 <Link href="/dashboard">
@@ -169,7 +204,7 @@ export default function HistorialClient({ sessions, frequencyData, exercises }: 
               </div>
             ) : (
               <ul className="space-y-4">
-                {sessions.map((s) => (
+                {localSessions.map((s) => (
                   <li key={s.id} className="bg-card p-4 rounded-lg border hover:shadow-sm transition-shadow">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
@@ -190,10 +225,15 @@ export default function HistorialClient({ sessions, frequencyData, exercises }: 
                         <Button asChild variant="outline" size="sm">
                           <Link href={`/workout/${s.id}?mode=view`}>View</Link>
                         </Button>
-                        {/* Resume might not be appropriate for completed sessions, maybe 'Repeat'? 
-                            Existing code had 'Resume' link to /workout/resume/id 
-                            I'll leave 'Repeat' logic for now or just generic View 
-                        */}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="px-2"
+                          onClick={() => handleDeleteSession(s.id)}
+                          aria-label="Delete workout"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </li>

@@ -14,9 +14,26 @@ import { useSidebar } from "@/lib/sidebar";
 interface DashboardClientProps {
   workouts: Workout[];
   userId: string;
+  lastPerformedMap: Record<string, string>;
 }
 
-export function DashboardClient({ workouts: serverWorkouts }: DashboardClientProps) {
+function formatRelativeDate(isoDate?: string): string {
+  if (!isoDate) return "Never";
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return "1 week ago";
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 60) return "1 month ago";
+  return `${Math.floor(diffDays / 30)} months ago`;
+}
+
+export function DashboardClient({ workouts: serverWorkouts, lastPerformedMap }: DashboardClientProps) {
   const router = useRouter();
   const { toggle: _toggleSidebar } = useSidebar();
   const [workouts, setWorkouts] = useState<Workout[]>(serverWorkouts);
@@ -282,7 +299,7 @@ export function DashboardClient({ workouts: serverWorkouts }: DashboardClientPro
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-2 text-xs text-muted-foreground">Last performed: -</div>
+                  <div className="mt-2 text-xs text-muted-foreground">Last performed: {formatRelativeDate(lastPerformedMap[routine.id])}</div>
                 </CardContent>
               </Card>
             ))

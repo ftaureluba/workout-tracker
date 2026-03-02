@@ -97,3 +97,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  const sessionUser = await auth();
+  if (!sessionUser?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { id } = body;
+
+    if (!id || typeof id !== "string") {
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
+    }
+
+    const { eq } = await import("drizzle-orm");
+
+    // Verify the session belongs to the user
+    const existingSession = await db.query.workoutSessions.findFirst({
+      where: eq(workoutSessions.id, id),
+    });
+
+    if (!existingSession) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    if (existingSession.userId !== sessionUser.user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Delete the session. This cascades to session_exercises and workout_set.
+    await db.delete(workoutSessions).where(eq(workoutSessions.id, id));
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Error deleting session:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
