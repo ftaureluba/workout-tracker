@@ -3,14 +3,14 @@ import LoginForm from "@/app/login/login-form";
 export default function LoginPage() {
   return (
     <main className="flex items-center justify-center min-h-screen relative overflow-hidden bg-black">
-        <div className="absolute inset-0 z-0 pointer-events-none">
+      <div className="fixed inset-0 z-0 pointer-events-none">
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none"
           viewBox="0 0 1100 800"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           preserveAspectRatio="xMidYMid slice"
-          
+
         >
           <defs>
             <radialGradient id="neonPulse1" cx="50%" cy="50%" r="50%">
@@ -135,14 +135,14 @@ export default function LoginPage() {
               opacity="0.2"
             />
           </g>
-          </svg>
-          </div>
-          
-      <div className="min-h-screen bg-background flex items-center justify-center p-4 bg-texture">
-      <div className="w-full max-w-md">
-        <LoginForm />
+        </svg>
       </div>
-    </div>
+
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 bg-texture">
+        <div className="w-full max-w-md">
+          <LoginForm />
+        </div>
+      </div>
     </main>
   );
 }

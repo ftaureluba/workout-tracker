@@ -13,7 +13,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-texture bg-black">
       {/* Animated Background Layer */}
-      <div className="absolute inset-0 z-0">
+      <div className="fixed inset-0 z-0">
         <svg
           className="absolute inset-0 w-full h-full"
           viewBox="0 0 1200 800"
@@ -709,9 +709,9 @@ export default function HomePage() {
             <Menu className="w-6 h-6" />
           </button>
           <Button
-          
-          onClick={() => router.push('/signup')}
-          className="group relative bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-xs lg:text-lg font-semibold flex items-center gap-2 backdrop-blur-sm border border-orange-400/30 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 hover:scale-105 hover:-translate-y-0.5">
+
+            onClick={() => router.push('/signup')}
+            className="group relative bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-xs lg:text-lg font-semibold flex items-center gap-2 backdrop-blur-sm border border-orange-400/30 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 hover:scale-105 hover:-translate-y-0.5">
             Registrarse
           </Button>
         </header>
@@ -726,7 +726,7 @@ export default function HomePage() {
               <a href="#" className="text-white/80 hover:text-white transition-colors">
                 Precio
               </a>
-              
+
               <a href="#" className="text-white/80 hover:text-white transition-colors">
                 Contact
               </a>
@@ -736,12 +736,12 @@ export default function HomePage() {
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col items-start justify-center px-4 sm:px-6 lg:px-12 max-w-6xl pl-6 sm:pl-12 lg:pl-20">
-          
+
 
           <h1 className="text-white text-4xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-8xl font-bold leading-tight mb-4 sm:mb-6 text-balance">
             Empieza a entrenar
             <br />
-          
+
             <LineShadowText className="italic font-light" shadowColor="white">
               Ahora
             </LineShadowText>
@@ -754,9 +754,9 @@ export default function HomePage() {
             con planes personalizados y seguimiento avanzado.
           </p>
 
-          <Button 
-          onClick={() => router.push('/signup')}
-          className="group relative bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-xs lg:text-lg font-semibold flex items-center gap-2 backdrop-blur-sm border border-orange-400/30 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 hover:scale-105 hover:-translate-y-0.5">
+          <Button
+            onClick={() => router.push('/signup')}
+            className="group relative bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-xs lg:text-lg font-semibold flex items-center gap-2 backdrop-blur-sm border border-orange-400/30 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-300 hover:scale-105 hover:-translate-y-0.5">
             Vamos!
             <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 group-hover:-rotate-12 transition-transform duration-300" />
             <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
