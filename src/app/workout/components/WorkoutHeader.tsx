@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/app/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, Bell, BellOff } from "lucide-react";
 import { useSidebar } from "@/lib/sidebar";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 
@@ -13,28 +13,29 @@ export function WorkoutHeader({ workoutName }: WorkoutHeaderProps) {
     const { pushEnabled, togglePush } = usePushNotifications();
 
     return (
-        <header className="w-full border-b bg-card/30 backdrop-blur-sm">
+        <header className="w-full border-b bg-card/30 backdrop-blur-sm relative">
             <div className="flex items-center justify-between p-4">
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-10 w-10"
+                    className="h-10 w-10 flex-shrink-0"
                     onClick={() => toggleSidebar()}
                     aria-label="Toggle sidebar"
                 >
                     <Menu className="h-6 w-6" />
                 </Button>
-                <h1 className="text-2xl font-bold mb-4 text-center">{workoutName}</h1>
-                <div></div> {/* Spacer to center the title if needed */}
-            </div>
 
-            <div className="flex justify-end px-4 pb-2">
-                <button
+                <h1 className="text-xl font-bold text-center truncate px-2 flex-grow">{workoutName}</h1>
+
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 flex-shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={togglePush}
-                    className="ml-3 px-3 py-1 bg-gray-800 text-white rounded text-sm"
+                    aria-label={pushEnabled ? "Disable push notifications" : "Enable push notifications"}
                 >
-                    {pushEnabled ? "Disable push" : "Enable push"}
-                </button>
+                    {pushEnabled ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+                </Button>
             </div>
         </header>
     );

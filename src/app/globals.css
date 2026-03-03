@@ -4,25 +4,38 @@
 
 :root {
   /* Updated color tokens to match modern orange-themed design brief */
-  --background: #000000; /* Clean white background */
-  --foreground: oklch(0.9850 0 0); /* Dark gray for text */
-  --card: oklch(0.2050 0 0); /* Light cream for form card */
-  --card-foreground: #d5b2b2; /* Dark gray text on card */
+  --background: #000000;
+  /* Clean white background */
+  --foreground: oklch(0.9850 0 0);
+  /* Dark gray for text */
+  --card: oklch(0.2050 0 0);
+  /* Light cream for form card */
+  --card-foreground: #d5b2b2;
+  /* Dark gray text on card */
   --popover: oklch(0.2690 0 0);
   --popover-foreground: oklch(0.9850 0 0);
-  --primary: #a50808; /* Orange primary color */
-  --primary-foreground: #000000; /* White text on primary */
-  --secondary: #a50808; /* Bright orange accent */
+  --primary: #a50808;
+  /* Orange primary color */
+  --primary-foreground: #000000;
+  /* White text on primary */
+  --secondary: #a50808;
+  /* Bright orange accent */
   --secondary-foreground: oklch(0.9850 0 0);
-  --muted: oklch(0.2690 0 0); /* Light muted background */
-  --muted-foreground: #c5b8b8; /* Muted text */
-  --accent: #4b1b1b; /* Bright orange for accents */
+  --muted: oklch(0.2690 0 0);
+  /* Light muted background */
+  --muted-foreground: #c5b8b8;
+  /* Muted text */
+  --accent: #4b1b1b;
+  /* Bright orange for accents */
   --accent-foreground: oklch(0.9850 0 0);
   --destructive: oklch(0.7040 0.1910 22.2160);
   --destructive-foreground: oklch(0.9850 0 0);
-  --border: oklch(0.2750 0 0); /* Light border */
-  --input: oklch(0.3250 0 0); /* White input background */
-  --ring: oklch(0.7080 0 0); /* Orange focus ring */
+  --border: oklch(0.2750 0 0);
+  /* Light border */
+  --input: oklch(0.3250 0 0);
+  /* White input background */
+  --ring: oklch(0.7080 0 0);
+  /* Orange focus ring */
   --chart-1: oklch(0.8100 0.1000 252);
   --chart-2: oklch(0.6200 0.1900 260);
   --chart-3: oklch(0.5500 0.2200 263);
@@ -38,7 +51,8 @@
   --sidebar-border: oklch(0.9220 0 0);
   --sidebar-ring: oklch(0.7080 0 0);
   --background-image: url("https://www.transparenttextures.com/patterns/cartographer.png");
-  --timer-image: url("https://www.transparenttextures.com/patterns/dark-mosaic.png");;
+  --timer-image: url("https://www.transparenttextures.com/patterns/dark-mosaic.png");
+  ;
 
 }
 
@@ -53,7 +67,7 @@
   --primary-foreground: #000000;
   --secondary: #a50808;
   --secondary-foreground: oklch(0.9850 0 0);
-  --terciary : #1C6E8C;
+  --terciary: #1C6E8C;
   --terciary-foreground: oklch(0.9850 0 0);
   --muted: oklch(0.2690 0 0);
   --muted-foreground: #c5b8b8;
@@ -92,6 +106,7 @@
     0% {
       background-position: 0 0;
     }
+
     100% {
       background-position: 100% -100%;
     }
@@ -106,18 +121,22 @@
       transform: translate(calc(100cqw - 100%), 0);
     }
   }
+
   @keyframes spin-around {
     0% {
       transform: translateZ(0) rotate(0);
     }
+
     15%,
     35% {
       transform: translateZ(0) rotate(90deg);
     }
+
     65%,
     85% {
       transform: translateZ(0) rotate(270deg);
     }
+
     100% {
       transform: translateZ(0) rotate(360deg);
     }
@@ -165,18 +184,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     background-image: var(--background-image);
     background-repeat: repeat;
   }
 }
+
 @layer utilities {
   .bg-texture {
     background-image: var(--background-image);
     background-repeat: repeat;
+    background-attachment: fixed;
   }
-  .timer-texture{
+
+  .timer-texture {
     background-image: var(--timer-image);
     background-repeat: repeat;
   }
