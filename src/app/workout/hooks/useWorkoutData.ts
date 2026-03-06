@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getWorkoutFromCache } from "@/lib/indexdb";
 import type { Workout, WorkoutExercise } from "@/lib/types";
-import { getLastPerformance, type LastPerformance } from "@/app/actions/last-performance";
 
 export type WorkoutLike =
     | (Workout & { exercises?: undefined })
@@ -19,10 +18,6 @@ export function useWorkoutData(workoutId: string) {
     const [workout, setWorkout] = useState<WorkoutLike | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // Editable exercises state
-    const [editableExercises, setEditableExercises] = useState<EditExercise[]>([]);
-    const [lastPerformanceData, setLastPerformanceData] = useState<Record<string, LastPerformance>>({});
 
     useEffect(() => {
         let mounted = true;
@@ -67,30 +62,10 @@ export function useWorkoutData(workoutId: string) {
         };
     }, [workoutId]);
 
-    // Fetch last performance data for the loaded exercises
-    useEffect(() => {
-        const exerciseIds = editableExercises
-            .map((e) => e.exerciseId)
-            .filter((id): id is string => !!id);
-        if (exerciseIds.length === 0) return;
-
-        let mounted = true;
-        getLastPerformance(exerciseIds)
-            .then((data) => {
-                if (mounted) setLastPerformanceData(data);
-            })
-            .catch(console.error);
-        return () => {
-            mounted = false;
-        };
-    }, [editableExercises]);
-
     return {
         workout,
         loading,
         error,
-        editableExercises,
-        setEditableExercises,
-        lastPerformanceData,
     };
 }
+

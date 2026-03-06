@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import ExercisePicker from "@/app/components/exercise-picker";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -10,6 +10,7 @@ import { useWorkoutSession } from "../hooks/useWorkoutSession";
 import { SortableExercise } from "../components/SortableExercise";
 import { WorkoutHeader } from "../components/WorkoutHeader";
 import type { Workout, WorkoutExercise } from "@/lib/types";
+import { getLastPerformance, type LastPerformance } from "@/app/actions/last-performance";
 
 interface Props {
   workoutId: string;
@@ -28,8 +29,12 @@ function hasWorkoutExercises(x: unknown): x is Workout {
 }
 
 export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
-  const { workout, loading, error, lastPerformanceData } = useWorkoutData(workoutId);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { workout, loading, error } = useWorkoutData(workoutId);
+
+  // Last performance state — managed here so it reacts to editableExercises from useWorkoutSession
+  const [lastPerformanceData, setLastPerformanceData] = useState<Record<string, LastPerformance>>({});
+  const fetchedIdsRef = useRef<Set<string>>(new Set());
 
   const normalizedExercises = useMemo(() => {
     return hasExercisesArray(workout)
@@ -65,6 +70,30 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
     handleEndWorkout,
     finishing,
   } = useWorkoutSession(workoutId, workout, resumeSessionId, normalizedExercises);
+
+  // Reactively fetch last performance whenever editableExercises changes
+  const exerciseIds = useMemo(
+    () => editableExercises.map((e) => e.exerciseId).filter((id): id is string => !!id),
+    [editableExercises]
+  );
+
+  useEffect(() => {
+    const newIds = exerciseIds.filter((id) => !fetchedIdsRef.current.has(id));
+    if (newIds.length === 0) return;
+
+    let mounted = true;
+    getLastPerformance(newIds)
+      .then((data) => {
+        if (mounted) {
+          newIds.forEach((id) => fetchedIdsRef.current.add(id));
+          setLastPerformanceData((prev) => ({ ...prev, ...data }));
+        }
+      })
+      .catch(console.error);
+    return () => {
+      mounted = false;
+    };
+  }, [exerciseIds]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),

@@ -223,7 +223,7 @@ export default function HistorialClient({ sessions, frequencyData, exercises }: 
                       </div>
                       <div className="flex gap-2">
                         <Button asChild variant="outline" size="sm">
-                          <Link href={`/workout/${s.id}?mode=view`}>View</Link>
+                          <Link href={`/historial/${s.id}`}>View</Link>
                         </Button>
                         <Button
                           variant="destructive"
