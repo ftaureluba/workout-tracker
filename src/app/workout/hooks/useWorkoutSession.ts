@@ -280,8 +280,10 @@ export function useWorkoutSession(
         }
     };
 
-    const clearCompletion = async (sessionId: string) => {
-        try { await deleteActiveSession(sessionId); } catch { }
+    const clearCompletion = async () => {
+        // Always use the client-side session ID (sessionIdRef) to delete from IndexedDB,
+        // since that's the key the session was stored under — NOT the server-side DB id.
+        try { await deleteActiveSession(sessionIdRef.current); } catch { }
         router.push("/dashboard");
     };
 

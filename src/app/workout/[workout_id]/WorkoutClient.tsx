@@ -183,7 +183,7 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
       {completionData && (
         <WorkoutCompleteModal
           prs={completionData.prs}
-          onClose={() => clearCompletion(completionData.sessionId)}
+          onClose={() => clearCompletion()}
         />
       )}
     </>
