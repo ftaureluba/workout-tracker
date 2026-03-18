@@ -1,0 +1,1 @@
+ALTER TABLE "workout_set" ADD COLUMN "set_order" integer DEFAULT 0 NOT NULL;

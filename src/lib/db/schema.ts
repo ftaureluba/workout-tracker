@@ -87,6 +87,7 @@ export const workoutSet = pgTable("workout_set", {
   weight: real("weight").notNull(),
   notes: text("notes"),
   completed: boolean("completed").default(false),
+  setOrder: integer("set_order").notNull().default(0),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
   exerciseId: uuid("exercise_id").notNull().references(() => exercises.id, { onDelete: "cascade" }),

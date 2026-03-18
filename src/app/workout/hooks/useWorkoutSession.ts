@@ -5,6 +5,12 @@ import type { Workout, ActiveSession } from "@/lib/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import type { DragEndEvent } from "@dnd-kit/core";
 import type { EditExercise, WorkoutLike } from "./useWorkoutData";
+import type { PRResult } from "@/lib/exercise-metrics";
+
+export type CompletionData = {
+  sessionId: string;
+  prs: PRResult[];
+};
 
 export type PerformedVal = number | "";
 
@@ -32,6 +38,7 @@ export function useWorkoutSession(
     const [performed, setPerformed] = useState<{ reps?: PerformedVal; weight?: PerformedVal }[][]>([]);
     const [resumeLoaded, setResumeLoaded] = useState(!resumeSessionId);
     const [finishing, setFinishing] = useState(false);
+    const [completionData, setCompletionData] = useState<CompletionData | null>(null);
 
     // Initialize editableExercises and performed when workout changes
     useEffect(() => {
@@ -249,7 +256,13 @@ export function useWorkoutSession(
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(session),
                     });
-                    if (!res.ok) await queueSync(session);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setCompletionData({ sessionId: data.id, prs: data.prs ?? [] });
+                        return; // modal will handle navigation
+                    } else {
+                        await queueSync(session);
+                    }
                 } catch {
                     await queueSync(session);
                 }
@@ -257,16 +270,19 @@ export function useWorkoutSession(
                 await queueSync(session);
             }
 
-            try {
-                await deleteActiveSession(session.sessionId);
-            } catch { }
-
+            // Offline path: no PR detection, go straight to dashboard
+            try { await deleteActiveSession(session.sessionId); } catch { }
             router.push("/dashboard");
         } catch (err) {
             console.error("Failed to end workout", err);
             alert("Failed to save workout session.");
             setFinishing(false);
         }
+    };
+
+    const clearCompletion = async (sessionId: string) => {
+        try { await deleteActiveSession(sessionId); } catch { }
+        router.push("/dashboard");
     };
 
     return {
@@ -280,5 +296,7 @@ export function useWorkoutSession(
         handleDragEnd,
         handleEndWorkout,
         finishing,
+        completionData,
+        clearCompletion,
     };
 }

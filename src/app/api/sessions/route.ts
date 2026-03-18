@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       weight: number;
       completed: boolean;
       notes: string | null;
+      setOrder: number;
     };
 
     const setsToInsert: InsertSet[] = [];
@@ -54,10 +55,10 @@ export async function POST(request: Request) {
       const ex = body.exercises[i];
       const insertedEx = insertedSessionExercises[i];
       if (!insertedEx) continue;
-      for (const s of ex.sets || []) {
+      (ex.sets || []).forEach((s, sIdx) => {
         const exId = ex.exerciseId ?? insertedEx.exerciseId;
         // workout_set.exerciseId is NOT NULL in schema — skip sets when we don't have an exercise id
-        if (!exId) continue;
+        if (!exId) return;
 
         setsToInsert.push({
           sessionExerciseId: insertedEx.id,
@@ -67,8 +68,9 @@ export async function POST(request: Request) {
           weight: s.weight ?? 0,
           completed: !!s.completed,
           notes: s.notes || null,
+          setOrder: sIdx,
         });
-      }
+      });
     }
 
     if (setsToInsert.length > 0) {
@@ -77,17 +79,30 @@ export async function POST(request: Request) {
       // Trigger metric updates asynchronously (fire and forget or await if critical)
       // Here we await to ensure data consistency, but wrap in try-catch to not fail the response
       try {
-        const uniqueExerciseIds = new Set(setsToInsert.map(s => s.exerciseId));
+        const uniqueExercises = new Map<string, string>(); // exerciseId -> exerciseName
+        setsToInsert.forEach((s, idx) => {
+          if (!uniqueExercises.has(s.exerciseId)) {
+            // find the matching body exercise to get the name
+            const bodyEx = body.exercises.find(
+              (e) => (e.exerciseId ?? "") === s.exerciseId
+            );
+            uniqueExercises.set(s.exerciseId, bodyEx?.exerciseName ?? "Unknown exercise");
+          }
+        });
+
         const { updateExerciseMetrics } = await import('@/lib/exercise-metrics');
 
-        await Promise.all(
-          Array.from(uniqueExerciseIds).map(exId =>
-            updateExerciseMetrics(exId, sessionUser.user.id!)
+        const prResults = await Promise.all(
+          Array.from(uniqueExercises.entries()).map(([exId, exName]) =>
+            updateExerciseMetrics(exId, sessionUser.user.id!, exName)
           )
         );
+
+        const prs = prResults.filter(Boolean);
+        return NextResponse.json({ id: createdSession.id, prs }, { status: 201 });
       } catch (metricsErr) {
         console.error("Failed to update exercise metrics:", metricsErr);
-        // Don't fail the request, just log the error
+        // Still return success — metrics are a bonus, not critical
       }
     }
 

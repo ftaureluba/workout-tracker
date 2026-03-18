@@ -113,6 +113,13 @@
       "when": 1771541822297,
       "tag": "0015_steep_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1773793672977,
+      "tag": "0016_black_firestar",
+      "breakpoints": true
     }
   ]
 }

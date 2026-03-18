@@ -7,7 +7,7 @@ import {
     sessionExercises,
     workoutSet,
 } from "@/lib/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, inArray } from "drizzle-orm";
 
 export type LastPerformanceSet = {
     reps: number;
@@ -51,6 +51,7 @@ export async function getLastPerformance(
             reps: workoutSet.reps,
             weight: workoutSet.weight,
             completed: workoutSet.completed,
+            setOrder: workoutSet.setOrder,
         })
         .from(workoutSet)
         .innerJoin(
@@ -68,7 +69,7 @@ export async function getLastPerformance(
                 eq(workoutSet.completed, true)
             )
         )
-        .orderBy(desc(workoutSessions.createdAt));
+        .orderBy(desc(workoutSessions.createdAt), asc(workoutSet.setOrder));
 
     // Group by exerciseId, then pick the most recent session's sets
     const byExercise: Record<

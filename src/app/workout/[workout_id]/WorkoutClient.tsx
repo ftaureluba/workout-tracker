@@ -9,6 +9,7 @@ import { useWorkoutData } from "../hooks/useWorkoutData";
 import { useWorkoutSession } from "../hooks/useWorkoutSession";
 import { SortableExercise } from "../components/SortableExercise";
 import { WorkoutHeader } from "../components/WorkoutHeader";
+import { WorkoutCompleteModal } from "../components/WorkoutCompleteModal";
 import type { Workout, WorkoutExercise } from "@/lib/types";
 import { getLastPerformance, type LastPerformance } from "@/app/actions/last-performance";
 
@@ -69,6 +70,8 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
     handleDragEnd,
     handleEndWorkout,
     finishing,
+    completionData,
+    clearCompletion,
   } = useWorkoutSession(workoutId, workout, resumeSessionId, normalizedExercises);
 
   // Reactively fetch last performance whenever editableExercises changes
@@ -177,6 +180,12 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
           )}
         </button>
       </div>
+      {completionData && (
+        <WorkoutCompleteModal
+          prs={completionData.prs}
+          onClose={() => clearCompletion(completionData.sessionId)}
+        />
+      )}
     </>
   );
 }
