@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   console.log('[/api/push/schedule] Received request');
   try {
     const body = await req.json();
-    const { subscription, sendAt, delayMs = 1000, title = 'Timer', body: message = 'Time is up', userId } = body;
+    const { subscription, sendAt, delayMs = 1000, title = 'Timer', body: message = 'Time is up', userId, data } = body;
 
     console.log('[/api/push/schedule] Parsed body:', {
       hasSubscription: !!subscription,
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       title,
       body: message,
       subscription,
+      data,
     };
 
     const insertResult = await db

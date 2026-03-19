@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
       title?: string;
       body?: string;
       subscription?: unknown;
+      data?: unknown;
     }
     let payload: NotificationPayload;
     try {
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Invalid payload JSON', jobId }, { status: 400 });
     }
 
-    const { title = 'Notification', body: messageBody = '', subscription } = payload;
+    const { title = 'Notification', body: messageBody = '', subscription, data } = payload;
 
     if (!subscription) {
       // Mark job as failed
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
       const notificationPayload = JSON.stringify({
         title,
         body: messageBody,
+        data,
         timestamp: Date.now(),
       });
 

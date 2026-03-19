@@ -118,6 +118,7 @@ export default function RestTimer({ defaultSeconds = 60, label = "Rest" }: Props
               title: `${label} finished`,
               body: "Your rest period is over",
               delayMs: secs * 1000,
+              data: { url: window.location.pathname },
             }),
           })
         } catch (scheduleErr) {

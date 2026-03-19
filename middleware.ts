@@ -14,7 +14,7 @@ export default auth((req) => {
   }
 
   // If logged in and trying to access login/signup, redirect to dashboard
-  if (isLoggedIn && ["/login", "/signup"].includes(pathname)) {
+  if (isLoggedIn && ["/", "/login", "/signup"].includes(pathname)) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
