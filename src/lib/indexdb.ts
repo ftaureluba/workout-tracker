@@ -1,218 +1,153 @@
-const DB_NAME = "workout-tracker"
-const DB_VERSION = 1;
+import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { ActiveSession, Workout } from "./types";
 
+// ── Schema definition ────────────────────────────────────────────────
 export interface PendingSync {
   id?: number;
   data: ActiveSession;
   timestamp: string;
 }
 
-const STORES = {
-  WORKOUTS: "workouts",
-  ACTIVE_SESSIONS: "active_sessions",
-  PENDING_SYNCS: "pending_syncs"
+interface WorkoutTrackerDB extends DBSchema {
+  workouts: {
+    key: string;
+    value: Workout;
+  };
+  active_sessions: {
+    key: string;
+    value: ActiveSession;
+    indexes: { startedAt: string };
+  };
+  pending_syncs: {
+    key: number;
+    value: PendingSync;
+  };
 }
 
-export function initDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+const DB_NAME = "workout-tracker";
+const DB_VERSION = 1;
 
-    request.onupgradeneeded = () => {
-      const db = (event?.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORES.WORKOUTS)) { db.createObjectStore(STORES.WORKOUTS, { keyPath: "id" }) }
+// ── Single cached connection ─────────────────────────────────────────
+let dbPromise: Promise<IDBPDatabase<WorkoutTrackerDB>> | null = null;
 
-      if (!db.objectStoreNames.contains(STORES.ACTIVE_SESSIONS)) {
-        const sessionStore = db.createObjectStore(STORES.ACTIVE_SESSIONS, { keyPath: "sessionId" })
-        sessionStore.createIndex("startedAt", "startedAt")
-      }
-
-      if (!db.objectStoreNames.contains(STORES.PENDING_SYNCS)) { db.createObjectStore(STORES.PENDING_SYNCS, { autoIncrement: true }) }
-    }
-  })
-}
-
-export async function saveWorkoutsToCache(workouts: Workout[]): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.WORKOUTS, "readwrite")
-  const store = tx.objectStore(STORES.WORKOUTS)
-
-  for (const workout of workouts) {
-    store.put(workout);
+function getDB(): Promise<IDBPDatabase<WorkoutTrackerDB>> {
+  if (!dbPromise) {
+    dbPromise = openDB<WorkoutTrackerDB>(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("workouts")) {
+          db.createObjectStore("workouts", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("active_sessions")) {
+          const sessionStore = db.createObjectStore("active_sessions", {
+            keyPath: "sessionId",
+          });
+          sessionStore.createIndex("startedAt", "startedAt");
+        }
+        if (!db.objectStoreNames.contains("pending_syncs")) {
+          db.createObjectStore("pending_syncs", { autoIncrement: true });
+        }
+      },
+    });
   }
-
-  return new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error)
-  })
+  return dbPromise;
 }
 
-export async function getWorkoutFromCache(workoutId: string): Promise<Workout | undefined> {
+// ── Workouts ─────────────────────────────────────────────────────────
+export async function saveWorkoutsToCache(workouts: Workout[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction("workouts", "readwrite");
+  await Promise.all([
+    ...workouts.map((w) => tx.store.put(w)),
+    tx.done,
+  ]);
+}
+
+export async function getWorkoutFromCache(
+  workoutId: string
+): Promise<Workout | undefined> {
   if (!workoutId) return undefined;
-
-  const db = await initDB();
-  const tx = db.transaction(STORES.WORKOUTS, "readonly");
-  const store = tx.objectStore(STORES.WORKOUTS);
-
-  return new Promise((resolve, reject) => {
-    const request = store.get(workoutId);
-    request.onsuccess = () => resolve(request.result as Workout | undefined);
-    request.onerror = () => reject(request.error);
-  });
+  const db = await getDB();
+  return db.get("workouts", workoutId);
 }
 
 export async function getAllWorkoutsFromCache(): Promise<Workout[]> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.WORKOUTS, "readonly");
-  const store = tx.objectStore(STORES.WORKOUTS);
-
-  return new Promise((resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result as Workout[]);
-    request.onerror = () => reject(request.error);
-  });
+  const db = await getDB();
+  return db.getAll("workouts");
 }
 
 export async function clearWorkoutCache(): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.WORKOUTS, "readwrite");
-  const store = tx.objectStore(STORES.WORKOUTS);
-
-  return new Promise<void>((resolve, reject) => {
-    const request = store.clear();
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
+  const db = await getDB();
+  await db.clear("workouts");
 }
 
-export async function saveActiveSession(session: ActiveSession): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.ACTIVE_SESSIONS, "readwrite");
-  const store = tx.objectStore(STORES.ACTIVE_SESSIONS);
-
+// ── Active Sessions ──────────────────────────────────────────────────
+export async function saveActiveSession(
+  session: ActiveSession
+): Promise<void> {
+  const db = await getDB();
   const sessionWithTimestamp: ActiveSession = {
     ...session,
     lastSaved: new Date().toISOString(),
   };
-
-  store.put(sessionWithTimestamp);
-
-  return new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await db.put("active_sessions", sessionWithTimestamp);
 }
 
-export async function getActiveSession(sessionId: string): Promise<ActiveSession | undefined> {
+export async function getActiveSession(
+  sessionId: string
+): Promise<ActiveSession | undefined> {
   if (!sessionId) return undefined;
-
-  const db = await initDB();
-  const tx = db.transaction(STORES.ACTIVE_SESSIONS, "readonly");
-  const store = tx.objectStore(STORES.ACTIVE_SESSIONS);
-
-  return new Promise((resolve, reject) => {
-    const request = store.get(sessionId);
-    request.onsuccess = () => resolve(request.result as ActiveSession | undefined);
-    request.onerror = () => reject(request.error);
-  });
+  const db = await getDB();
+  return db.get("active_sessions", sessionId);
 }
 
-export async function deleteActiveSession(sessionId: string): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.ACTIVE_SESSIONS, "readwrite");
-  const store = tx.objectStore(STORES.ACTIVE_SESSIONS);
-
-  store.delete(sessionId);
-
-  return new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+export async function deleteActiveSession(
+  sessionId: string
+): Promise<void> {
+  const db = await getDB();
+  await db.delete("active_sessions", sessionId);
 }
 
 export async function getAllActiveSessions(): Promise<ActiveSession[]> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.ACTIVE_SESSIONS, "readonly");
-  const store = tx.objectStore(STORES.ACTIVE_SESSIONS);
-
-  return new Promise((resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result as ActiveSession[]);
-    request.onerror = () => reject(request.error);
-  });
+  const db = await getDB();
+  return db.getAll("active_sessions");
 }
 
-
+// ── Pending Syncs ────────────────────────────────────────────────────
 export async function queueSync(data: ActiveSession): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.PENDING_SYNCS, "readwrite");
-  const store = tx.objectStore(STORES.PENDING_SYNCS);
-
-  const syncItem: Omit<PendingSync, 'id'> = {
+  const db = await getDB();
+  const syncItem: Omit<PendingSync, "id"> = {
     data,
     timestamp: new Date().toISOString(),
   };
-
-  store.add(syncItem);
-
-  return new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await db.add("pending_syncs", syncItem as PendingSync);
 }
 
 export async function getPendingSyncs(): Promise<PendingSync[]> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.PENDING_SYNCS, "readonly");
-  const store = tx.objectStore(STORES.PENDING_SYNCS);
-
-  return new Promise((resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result as PendingSync[]);
-    request.onerror = () => reject(request.error);
-  });
+  const db = await getDB();
+  return db.getAll("pending_syncs");
 }
 
 export async function clearPendingSync(key: number): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.PENDING_SYNCS, "readwrite");
-  const store = tx.objectStore(STORES.PENDING_SYNCS);
-
-  store.delete(key);
-
-  return new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  const db = await getDB();
+  await db.delete("pending_syncs", key);
 }
 
 export async function clearAllPendingSyncs(): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORES.PENDING_SYNCS, "readwrite");
-  const store = tx.objectStore(STORES.PENDING_SYNCS);
-
-  return new Promise<void>((resolve, reject) => {
-    const request = store.clear();
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
+  const db = await getDB();
+  await db.clear("pending_syncs");
 }
 
+// ── Bulk Clear ───────────────────────────────────────────────────────
 export async function clearAllData(): Promise<void> {
-  const db = await initDB();
+  const db = await getDB();
   const tx = db.transaction(
-    [STORES.WORKOUTS, STORES.ACTIVE_SESSIONS, STORES.PENDING_SYNCS],
+    ["workouts", "active_sessions", "pending_syncs"],
     "readwrite"
   );
-
-  tx.objectStore(STORES.WORKOUTS).clear();
-  tx.objectStore(STORES.ACTIVE_SESSIONS).clear();
-  tx.objectStore(STORES.PENDING_SYNCS).clear();
-
-  return new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await Promise.all([
+    tx.objectStore("workouts").clear(),
+    tx.objectStore("active_sessions").clear(),
+    tx.objectStore("pending_syncs").clear(),
+    tx.done,
+  ]);
 }
