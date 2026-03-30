@@ -7,7 +7,6 @@ import { auth } from "@/lib/auth"; // Import the auth function
 
 export async function GET() {
   const session = await auth();
-  console.log("coso de session: ", session);
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -142,11 +141,6 @@ export async function PUT(request: Request){
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    await db.update(workouts).set({ name, description: description || null }).where(eq(workouts.id, id));
-
-    // Remove previous workoutExercises and re-insert the provided list
-    await db.delete(workoutExercises).where(eq(workoutExercises.workoutId, id));
-
     type PayloadExercise = {
       id: string;
       order?: number;
@@ -172,9 +166,14 @@ export async function PUT(request: Request){
       supersetGroup: ex.supersetGroup  || null
     }))
 
-    if (WorkoutExercisesValues.length > 0) {
-      await db.insert(workoutExercises).values(WorkoutExercisesValues);
-    }
+    // Update workout + replace exercises atomically
+    await db.transaction(async (tx) => {
+      await tx.update(workouts).set({ name, description: description || null }).where(eq(workouts.id, id));
+      await tx.delete(workoutExercises).where(eq(workoutExercises.workoutId, id));
+      if (WorkoutExercisesValues.length > 0) {
+        await tx.insert(workoutExercises).values(WorkoutExercisesValues);
+      }
+    });
 
     const completeWorkout = await db.query.workouts.findFirst({
       where: eq(workouts.id, id),
@@ -221,8 +220,7 @@ export async function DELETE(request: Request){
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // delete related workoutExercises then the workout
-    await db.delete(workoutExercises).where(eq(workoutExercises.workoutId, id));
+    // ON DELETE CASCADE on workoutExercises.workoutId handles child cleanup
     await db.delete(workouts).where(eq(workouts.id, id));
 
     return NextResponse.json({ success: true }, { status: 200 });

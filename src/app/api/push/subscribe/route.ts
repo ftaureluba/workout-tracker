@@ -3,12 +3,17 @@ import type { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { pushSubscriptions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { auth } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { subscription, userId } = body;
-    console.info('Received subscription via /api/push/subscribe', subscription ? { endpoint: subscription.endpoint } : null);
+    const { subscription } = body;
     if (!subscription || !subscription.endpoint) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });
     }
@@ -16,7 +21,7 @@ export async function POST(req: NextRequest) {
     try {
       const existing = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, subscription.endpoint));
       if (!existing.length) {
-        await db.insert(pushSubscriptions).values({ endpoint: subscription.endpoint, subscription: JSON.stringify(subscription), userId: userId || null });
+        await db.insert(pushSubscriptions).values({ endpoint: subscription.endpoint, subscription: JSON.stringify(subscription), userId: session.user.id });
       }
     } catch (e) {
       console.error('Failed to persist subscription to DB', e);

@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import { SignupFormSchema, State } from "./definitions";
 import { redirect } from "next/navigation";
 import { rateLimit } from "@/lib/rate-limit";
+import { signIn } from "@/lib/auth";
 
 export async function verifyCredentials(username: string, password: string) {
   try {
@@ -36,7 +37,7 @@ export async function verifyCredentials(username: string, password: string) {
   }
 }
 
-export async function signup(prevState: State, formData: FormData) {
+export async function signup(prevState: State | undefined, formData: FormData): Promise<State> {
   const validatedFields = SignupFormSchema.safeParse({
     username: formData.get("username"),
     email: formData.get("email") || undefined,
@@ -64,15 +65,17 @@ export async function signup(prevState: State, formData: FormData) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
-    const [newUser] = await db.insert(users).values({
-      name: username,
-      username: username,
-      email: email || null,
-      password: hashedPassword,
-    }).returning();
+    await db.transaction(async (tx) => {
+      const [newUser] = await tx.insert(users).values({
+        name: username,
+        username: username,
+        email: email || null,
+        password: hashedPassword,
+      }).returning();
 
-    // Seed default workouts for the new user
-    await seedUserWorkouts(newUser.id);
+      // Seed default workouts for the new user, passing the transaction
+      await seedUserWorkouts(newUser.id, tx);
+    });
   } catch (error: any) {
     // Check for unique constraint violation on username
     if (error?.code === "23505" && error?.constraint?.includes("username")) {
@@ -81,5 +84,13 @@ export async function signup(prevState: State, formData: FormData) {
     console.error("Signup error:", error);
     return { message: "Database Error: Failed to Create Account." };
   }
-  redirect("/login");
+  
+  // Automatically sign the user in after successful registration
+  await signIn("credentials", {
+    username,
+    password,
+    redirectTo: "/dashboard",
+  });
+
+  return { message: null };
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { pushJobs } from '@/lib/db/schema';
+import { auth } from '@/lib/auth';
 
 /**
  * POST /api/push
@@ -15,13 +16,17 @@ import { pushJobs } from '@/lib/db/schema';
  *   title?: string,
  *   body?: string,
  *   delayMs?: number,
- *   userId?: string
  * }
  */
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { subscription, title = 'Timer', body: message = 'Time is up', delayMs = 1000, userId } = body;
+    const { subscription, title = 'Timer', body: message = 'Time is up', delayMs = 1000 } = body;
 
     if (!subscription) {
       return NextResponse.json({ error: 'Missing subscription' }, { status: 400 });
@@ -40,7 +45,7 @@ export async function POST(req: NextRequest) {
     const insertResult = await db
       .insert(pushJobs)
       .values({
-        userId: userId || null,
+        userId: session.user.id,
         fireAt: new Date(fireAtTime),
         payload: JSON.stringify(jobPayload),
         status: 'scheduled',

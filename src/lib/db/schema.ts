@@ -92,7 +92,7 @@ export const workoutSet = pgTable("workout_set", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
   exerciseId: uuid("exercise_id").notNull().references(() => exercises.id, { onDelete: "cascade" }),
   sessionExerciseId: uuid("session_exercise_id").notNull().references(
-    () => sessionExercises.id
+    () => sessionExercises.id, { onDelete: "cascade" }
   ),
   workoutSessionId: uuid("workout_session_id").notNull().references(
     () => workoutSessions.id

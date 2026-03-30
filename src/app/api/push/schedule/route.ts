@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { pushJobs } from '@/lib/db/schema';
+import { auth } from '@/lib/auth';
 
 /**
  * POST /api/push/schedule
@@ -20,26 +21,19 @@ import { pushJobs } from '@/lib/db/schema';
  *   delayMs?: number,
  *   title?: string,
  *   body?: string,
- *   userId?: string
  * }
  */
 export async function POST(req: NextRequest) {
-  console.log('[/api/push/schedule] Received request');
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { subscription, sendAt, delayMs = 1000, title = 'Timer', body: message = 'Time is up', userId, data } = body;
-
-    console.log('[/api/push/schedule] Parsed body:', {
-      hasSubscription: !!subscription,
-      subscriptionEndpoint: subscription?.endpoint?.substring(0, 50) + '...',
-      sendAt,
-      delayMs,
-      title,
-      userId: userId || 'none'
-    });
+    const { subscription, sendAt, delayMs = 1000, title = 'Timer', body: message = 'Time is up', data } = body;
 
     if (!subscription) {
-      console.log('[/api/push/schedule] Missing subscription, returning 400');
       return NextResponse.json({ error: 'Missing subscription' }, { status: 400 });
     }
 
@@ -57,7 +51,7 @@ export async function POST(req: NextRequest) {
     const insertResult = await db
       .insert(pushJobs)
       .values({
-        userId: userId || null,
+        userId: session.user.id,
         fireAt: new Date(fireAtTime),
         payload: JSON.stringify(jobPayload),
         status: 'scheduled',
@@ -87,7 +81,6 @@ export async function POST(req: NextRequest) {
 
       if (!workerResponse.ok) {
         const error = await workerResponse.json().catch(() => ({ error: workerResponse.statusText }));
-        // Job is created but not scheduled - Worker is unreachable
         console.error('Worker scheduling failed:', error);
         return NextResponse.json(
           {

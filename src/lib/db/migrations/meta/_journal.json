@@ -120,6 +120,13 @@
       "when": 1773793672977,
       "tag": "0016_black_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1774911862737,
+      "tag": "0017_volatile_hiroim",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { db } from "./db";
 import { workouts, workoutExercises, exercises } from "./db/schema";
 import { eq, or, isNull } from "drizzle-orm";
 
-export async function seedUserWorkouts(userId: string) {
+export async function seedUserWorkouts(userId: string, tx: any = db) {
     try {
         console.log(`[seedUserWorkouts] Starting seed for user ${userId}`);
 
@@ -22,21 +22,21 @@ export async function seedUserWorkouts(userId: string) {
             "Lunges"
         ];
 
-        const systemExercises = await db
+        const systemExercises = await tx
             .select()
             .from(exercises)
             .where(or(isNull(exercises.userId)));
 
         // Create a map for quick lookup: Name -> ID
         const exerciseMap = new Map<string, string>();
-        systemExercises.forEach((ex) => {
+        systemExercises.forEach((ex: any) => {
             if (ex.name) exerciseMap.set(ex.name, ex.id);
         });
 
         const getExId = (name: string) => exerciseMap.get(name);
 
         // 1. Push Day
-        const [pushWorkout] = await db.insert(workouts).values({
+        const [pushWorkout] = await tx.insert(workouts).values({
             name: "Push Day",
             description: "Chest, Shoulders, Triceps",
             userId: userId
@@ -62,12 +62,12 @@ export async function seedUserWorkouts(userId: string) {
             .filter(item => item.exerciseId !== undefined) as any[]; // Filter out missing exercises if system DB is incomplete
 
         if (pushExercisesValues.length > 0) {
-            await db.insert(workoutExercises).values(pushExercisesValues);
+            await tx.insert(workoutExercises).values(pushExercisesValues);
         }
 
 
         // 2. Pull Day
-        const [pullWorkout] = await db.insert(workouts).values({
+        const [pullWorkout] = await tx.insert(workouts).values({
             name: "Pull Day",
             description: "Back, Biceps, Rear Delts",
             userId: userId
@@ -92,11 +92,11 @@ export async function seedUserWorkouts(userId: string) {
             .filter(item => item.exerciseId !== undefined) as any[];
 
         if (pullExercisesValues.length > 0) {
-            await db.insert(workoutExercises).values(pullExercisesValues);
+            await tx.insert(workoutExercises).values(pullExercisesValues);
         }
 
         // 3. Leg Day
-        const [legWorkout] = await db.insert(workouts).values({
+        const [legWorkout] = await tx.insert(workouts).values({
             name: "Leg Day",
             description: "Quads, Hamstrings, Glutes, Calves",
             userId: userId
@@ -120,13 +120,13 @@ export async function seedUserWorkouts(userId: string) {
             .filter(item => item.exerciseId !== undefined) as any[];
 
         if (legExercisesValues.length > 0) {
-            await db.insert(workoutExercises).values(legExercisesValues);
+            await tx.insert(workoutExercises).values(legExercisesValues);
         }
 
         console.log(`[seedUserWorkouts] Successfully seeded workouts for user ${userId}`);
 
     } catch (error) {
         console.error("[seedUserWorkouts] Error seeding workouts:", error);
-        // We don't throw here to avoid failing the entire signup if seeding fails
+        throw error; // Throw so the outer transaction can rollback
     }
 }

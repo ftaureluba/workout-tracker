@@ -17,72 +17,76 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    // Insert workout session
-    const [createdSession] = await db.insert(workoutSessions).values({
-      userId: sessionUser.user.id,
-      workoutId: body.workoutId ?? null,
-      startedAt: body.startedAt ? new Date(body.startedAt) : null,
-      endedAt: body.endedAt ? new Date(body.endedAt) : null,
-      notes: null,
-    }).returning();
+    // Wrap all inserts in a transaction for atomicity
+    const { createdSession, setsToInsert } = await db.transaction(async (tx) => {
+      // Insert workout session
+      const [createdSession] = await tx.insert(workoutSessions).values({
+        userId: sessionUser.user.id,
+        workoutId: body.workoutId ?? null,
+        startedAt: body.startedAt ? new Date(body.startedAt) : null,
+        endedAt: body.endedAt ? new Date(body.endedAt) : null,
+        notes: null,
+      }).returning();
 
-    // Insert session exercises
-    const sessionExercisesValues = body.exercises.map((ex) => ({
-      workoutSessionId: createdSession.id,
-      exerciseId: ex.exerciseId || null,
-      order: ex.order ?? 0,
-      isSuperset: false,
-      supersetGroup: null,
-      name: ex.exerciseName || null,
-    }));
+      // Insert session exercises
+      const sessionExercisesValues = body.exercises.map((ex) => ({
+        workoutSessionId: createdSession.id,
+        exerciseId: ex.exerciseId || null,
+        order: ex.order ?? 0,
+        isSuperset: false,
+        supersetGroup: null,
+        name: ex.exerciseName || null,
+      }));
 
-    const insertedSessionExercises = await db.insert(sessionExercises).values(sessionExercisesValues).returning();
+      const insertedSessionExercises = await tx.insert(sessionExercises).values(sessionExercisesValues).returning();
 
-    // Insert sets
-    type InsertSet = {
-      sessionExerciseId: string;
-      exerciseId: string;
-      workoutSessionId: string;
-      reps: number;
-      weight: number;
-      completed: boolean;
-      notes: string | null;
-      setOrder: number;
-    };
+      // Insert sets
+      type InsertSet = {
+        sessionExerciseId: string;
+        exerciseId: string;
+        workoutSessionId: string;
+        reps: number;
+        weight: number;
+        completed: boolean;
+        notes: string | null;
+        setOrder: number;
+      };
 
-    const setsToInsert: InsertSet[] = [];
-    for (let i = 0; i < body.exercises.length; i++) {
-      const ex = body.exercises[i];
-      const insertedEx = insertedSessionExercises[i];
-      if (!insertedEx) continue;
-      (ex.sets || []).forEach((s, sIdx) => {
-        const exId = ex.exerciseId ?? insertedEx.exerciseId;
-        // workout_set.exerciseId is NOT NULL in schema — skip sets when we don't have an exercise id
-        if (!exId) return;
+      const setsToInsert: InsertSet[] = [];
+      for (let i = 0; i < body.exercises.length; i++) {
+        const ex = body.exercises[i];
+        const insertedEx = insertedSessionExercises[i];
+        if (!insertedEx) continue;
+        (ex.sets || []).forEach((s, sIdx) => {
+          const exId = ex.exerciseId ?? insertedEx.exerciseId;
+          if (!exId) return;
 
-        setsToInsert.push({
-          sessionExerciseId: insertedEx.id,
-          exerciseId: exId,
-          workoutSessionId: createdSession.id,
-          reps: s.reps ?? 0,
-          weight: s.weight ?? 0,
-          completed: !!s.completed,
-          notes: s.notes || null,
-          setOrder: sIdx,
+          setsToInsert.push({
+            sessionExerciseId: insertedEx.id,
+            exerciseId: exId,
+            workoutSessionId: createdSession.id,
+            reps: s.reps ?? 0,
+            weight: s.weight ?? 0,
+            completed: !!s.completed,
+            notes: s.notes || null,
+            setOrder: sIdx,
+          });
         });
-      });
-    }
+      }
 
+      if (setsToInsert.length > 0) {
+        await tx.insert(workoutSet).values(setsToInsert);
+      }
+
+      return { createdSession, setsToInsert };
+    });
+
+    // Metric updates are non-critical — run outside transaction to avoid holding it open
     if (setsToInsert.length > 0) {
-      await db.insert(workoutSet).values(setsToInsert);
-
-      // Trigger metric updates asynchronously (fire and forget or await if critical)
-      // Here we await to ensure data consistency, but wrap in try-catch to not fail the response
       try {
-        const uniqueExercises = new Map<string, string>(); // exerciseId -> exerciseName
-        setsToInsert.forEach((s, idx) => {
+        const uniqueExercises = new Map<string, string>();
+        setsToInsert.forEach((s) => {
           if (!uniqueExercises.has(s.exerciseId)) {
-            // find the matching body exercise to get the name
             const bodyEx = body.exercises.find(
               (e) => (e.exerciseId ?? "") === s.exerciseId
             );
@@ -102,7 +106,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ id: createdSession.id, prs }, { status: 201 });
       } catch (metricsErr) {
         console.error("Failed to update exercise metrics:", metricsErr);
-        // Still return success — metrics are a bonus, not critical
       }
     }
 
