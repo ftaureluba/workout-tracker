@@ -1,17 +1,11 @@
-// app/dashboard/page.tsx (SIMPLIFIED)
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "./dashboardClient";
-import type { Workout } from "@/lib/types";
-import { cookies } from "next/headers";
+import { db } from "@/lib/db";
+import { workouts } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { getLastPerformedDates } from "@/app/actions/last-performance";
-
-
-const baseUrl =
-  process.env.AUTH_URL ??
-  process.env.NEXTAUTH_URL ??
-  process.env.RENDER_EXTERNAL_URL ??
-  "http://localhost:3000";
+import type { Workout } from "@/lib/types";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -19,21 +13,44 @@ export default async function DashboardPage() {
   if (!session?.user?.id) {
     redirect("/login");
   }
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
 
-  const response = await fetch(`${baseUrl}/api/dashboard`, {
-    cache: "no-store",
-    headers: {
-      Cookie: cookieHeader,
+  // Query DB directly instead of self-fetching /api/dashboard
+  const dbWorkouts = await db.query.workouts.findMany({
+    where: eq(workouts.userId, session.user.id),
+    with: {
+      workoutExercises: {
+        with: {
+          exercise: true,
+        },
+        orderBy: (workoutExercises, { asc }) => [asc(workoutExercises.order)],
+      },
     },
+    orderBy: [desc(workouts.updatedAt)],
   });
-  console.log("Response status:", response.status, response);
-  const workouts: Workout[] = await response.json();
 
-  // Fetch "last performed" dates for all workout IDs
-  const workoutIds = workouts.map((w) => w.id);
-  const lastPerformedMap = await getLastPerformedDates(workoutIds);
+  // Convert Date objects to ISO strings to match the Workout type
+  // (the previous self-fetch did this implicitly via JSON serialization)
+  const userWorkouts: Workout[] = dbWorkouts.map((w) => ({
+    ...w,
+    userId: w.userId ?? "",
+    createdAt: w.createdAt?.toISOString() ?? null,
+    updatedAt: w.updatedAt?.toISOString() ?? null,
+    workoutExercises: w.workoutExercises.map((we) => ({
+      ...we,
+      id: we.exerciseId,
+      isSuperset: we.isSuperset ?? undefined,
+      supersetGroup: we.supersetGroup ?? undefined,
+      exercise: {
+        ...we.exercise,
+        createdAt: we.exercise.createdAt?.toISOString() ?? null,
+        updatedAt: we.exercise.updatedAt?.toISOString() ?? null,
+      },
+    })),
+  }));
 
-  return <DashboardClient workouts={workouts} userId={session.user.id} lastPerformedMap={lastPerformedMap} />;
+  // Fetch "last performed" dates, passing userId to skip redundant auth()
+  const workoutIds = userWorkouts.map((w) => w.id);
+  const lastPerformedMap = await getLastPerformedDates(workoutIds, session.user.id);
+
+  return <DashboardClient workouts={userWorkouts} userId={session.user.id} lastPerformedMap={lastPerformedMap} />;
 }

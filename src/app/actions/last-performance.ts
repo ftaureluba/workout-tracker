@@ -113,13 +113,21 @@ export async function getLastPerformance(
 /**
  * Fetches the most recent session date for each workout ID.
  * Returns a map of workoutId -> ISO date string.
+ *
+ * When called from a context that already has the authenticated user ID,
+ * pass it as the second argument to skip a redundant auth() call.
  */
 export async function getLastPerformedDates(
-    workoutIds: string[]
+    workoutIds: string[],
+    authenticatedUserId?: string
 ): Promise<Record<string, string>> {
-    const session = await auth();
-    if (!session?.user?.id) {
-        return {};
+    let userId = authenticatedUserId;
+    if (!userId) {
+        const session = await auth();
+        if (!session?.user?.id) {
+            return {};
+        }
+        userId = session.user.id;
     }
 
     if (workoutIds.length === 0) return {};
@@ -134,7 +142,7 @@ export async function getLastPerformedDates(
         .from(workoutSessions)
         .where(
             and(
-                eq(workoutSessions.userId, session.user.id),
+                eq(workoutSessions.userId, userId),
                 inArray(workoutSessions.workoutId, uniqueIds)
             )
         )
