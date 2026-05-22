@@ -78,6 +78,31 @@ export function DashboardClient({ workouts: serverWorkouts, lastPerformedMap }: 
     cacheData();
   }, [serverWorkouts]);
 
+  // Prefetch critical pages to cache them in the service worker for offline use
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      const urlsToCache = ["/dashboard", "/login"];
+      
+      workouts.forEach((w) => {
+        if (w.id) {
+          urlsToCache.push(`/workout/${w.id}`);
+        }
+      });
+
+      urlsToCache.forEach((url) => {
+        fetch(url, { headers: { Accept: "text/html" } })
+          .then((res) => {
+            if (res.ok) {
+              console.log(`✅ Cached HTML for ${url}`);
+            }
+          })
+          .catch((err) => {
+            console.warn(`❌ Failed to cache HTML for ${url}:`, err);
+          });
+      });
+    }
+  }, [workouts]);
+
   // Check for unfinished workouts
   useEffect(() => {
     const loadActiveSessions = async () => {

@@ -9,11 +9,29 @@ if (typeof workbox !== 'undefined') {
   // Precache injected manifest
   workbox.precaching.precacheAndRoute(self.__WB_MANIFEST || []);
 
-  // Example runtime caching rules (you can extend these if needed)
+  // Caching rules for HTML documents, scripts, styles, and background fetched pages
   workbox.routing.registerRoute(
-    ({ request }) => request.destination === 'document' || request.destination === 'script' || request.destination === 'style',
+    ({ request, url }) => {
+      // Exclude API routes and Next.js data routes
+      if (url.pathname.startsWith('/api') || url.pathname.startsWith('/_next/data')) {
+        return false;
+      }
+      const acceptHeader = request.headers.get('accept') || '';
+      return request.destination === 'document' ||
+             request.destination === 'script' ||
+             request.destination === 'style' ||
+             acceptHeader.includes('text/html');
+    },
     new workbox.strategies.NetworkFirst({ cacheName: 'assets' })
   );
+
+  // Global catch handler: serve the precached offline.html if any page navigation fails
+  workbox.routing.setCatchHandler(async ({ request }) => {
+    if (request.destination === 'document') {
+      return (await workbox.precaching.matchPrecache('/offline.html')) || Response.error();
+    }
+    return Response.error();
+  });
 }
 
 // Push handler: show notification when push arrives

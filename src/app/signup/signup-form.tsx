@@ -25,6 +25,11 @@ export default function SignupForm() {
 
   useEffect(() => {
     if (session) {
+      try {
+        localStorage.setItem("isLoggedIn", "true");
+      } catch (e) {
+        console.warn("Failed to set isLoggedIn in localStorage", e);
+      }
       router.replace("/dashboard");
     }
   }, [session, router]);

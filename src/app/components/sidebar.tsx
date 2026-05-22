@@ -73,6 +73,11 @@ export default function Sidebar() {
               onClick={async () => {
                 close();
                 try {
+                  localStorage.removeItem("isLoggedIn");
+                } catch (e) {
+                  console.warn("Failed to clear isLoggedIn from localStorage", e);
+                }
+                try {
                   await clearAllData();
                 } catch (e) {
                   console.error("Failed to clear local data:", e);

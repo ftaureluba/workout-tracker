@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline - Workout Tracker</title>
+  <style>
+    :root {
+      --background: 0 0% 0%;
+      --foreground: 0 0% 98%;
+      --primary: 20.5 90.2% 48.2%;
+      --card: 240 10% 3.9%;
+      --card-foreground: 0 0% 98%;
+      --border: 240 3.7% 15.9%;
+      --muted: 240 3.8% 46.1%;
+      --muted-foreground: 240 5% 64.9%;
+    }
+    body {
+      background-color: #000000;
+      color: #fafafa;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      box-sizing: border-box;
+      text-align: center;
+      overflow: hidden;
+    }
+    .background-glow {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0) 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      pointer-events: none;
+      filter: blur(40px);
+    }
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 420px;
+      width: 100%;
+      padding: 40px 30px;
+      background: rgba(9, 9, 11, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    h1 {
+      font-size: 26px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+    p {
+      color: #a1a1aa;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .btn {
+      background: linear-gradient(to right, #f97316, #ea580c);
+      color: #ffffff;
+      border: none;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.3);
+    }
+    .btn:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .icon-container {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(249, 115, 22, 0.1);
+      border: 1px solid rgba(249, 115, 22, 0.2);
+    }
+    .icon {
+      font-size: 36px;
+      color: #f97316;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+  </style>
+  <script>
+    // Safe client-side routing fallback logic
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    const target = isLoggedIn ? "/dashboard" : "/login";
+
+    if (sessionStorage.getItem("offline_fallback_attempted") === "true") {
+      // Clear the flag so that future reloads can try again
+      sessionStorage.removeItem("offline_fallback_attempted");
+      console.warn("Offline fallback redirect failed to load page from cache.");
+    } else {
+      // Set the flag and redirect to the target page URL
+      sessionStorage.setItem("offline_fallback_attempted", "true");
+      window.location.replace(target);
+    }
+  </script>
+</head>
+<body>
+  <div class="background-glow"></div>
+  <div class="container" id="offline-message">
+    <div class="icon-container">
+      <span class="icon">📴</span>
+    </div>
+    <h1>Sin conexión a Internet</h1>
+    <p>No se pudo establecer conexión con el servidor y esta sección no está guardada para uso sin conexión todavía.</p>
+    <button class="btn" onclick="window.location.reload()">Reintentar conexión</button>
+  </div>
+</body>
+</html>
