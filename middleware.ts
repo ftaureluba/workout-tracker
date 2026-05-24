@@ -5,6 +5,8 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
+  console.log(`[Middleware] pathname: ${pathname}, isLoggedIn: ${isLoggedIn}`);
+
   // Public routes that don't need auth
   const isPublicRoute = ["/", "/login", "/signup"].includes(pathname);
 
@@ -15,6 +17,7 @@ export default auth((req) => {
 
   // If logged in and trying to access login/signup, redirect to dashboard
   if (isLoggedIn && ["/", "/login", "/signup"].includes(pathname)) {
+    console.log(`[Middleware] Redirecting logged-in user from ${pathname} to /dashboard`);
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
@@ -22,5 +25,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
+  matcher: ["/", "/((?!api|_next/static|_next/image|.*\\.png$).*)"],
 };
