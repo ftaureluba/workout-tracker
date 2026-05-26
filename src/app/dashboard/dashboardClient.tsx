@@ -78,7 +78,7 @@ export function DashboardClient({ workouts: serverWorkouts, lastPerformedMap }: 
     cacheData();
   }, [serverWorkouts]);
 
-  // Prefetch critical pages to cache them in the service worker for offline use
+  // Prefetch critical pages and API data to cache them in the service worker for offline use
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker.controller) {
       const urlsToCache = ["/dashboard", "/login"];
@@ -86,18 +86,25 @@ export function DashboardClient({ workouts: serverWorkouts, lastPerformedMap }: 
       workouts.forEach((w) => {
         if (w.id) {
           urlsToCache.push(`/workout/${w.id}`);
+          // Also prefetch the API endpoint so workout data is cached
+          urlsToCache.push(`/api/workouts/${w.id}`);
         }
       });
 
       urlsToCache.forEach((url) => {
-        fetch(url, { headers: { Accept: "text/html" } })
+        // For HTML pages, request with text/html
+        const headers = url.includes('/api') 
+          ? { "Content-Type": "application/json" }
+          : { Accept: "text/html" };
+        
+        fetch(url, { headers })
           .then((res) => {
             if (res.ok) {
-              console.log(`✅ Cached HTML for ${url}`);
+              console.log(`✅ Cached ${url}`);
             }
           })
           .catch((err) => {
-            console.warn(`❌ Failed to cache HTML for ${url}:`, err);
+            console.warn(`❌ Failed to cache ${url}:`, err);
           });
       });
     }

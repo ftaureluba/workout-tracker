@@ -25,6 +25,21 @@ if (typeof workbox !== 'undefined') {
     new workbox.strategies.NetworkFirst({ cacheName: 'assets' })
   );
 
+  // Cache the workout API endpoint with a network-first strategy
+  // This allows users to start workouts offline if the data was previously cached
+  workbox.routing.registerRoute(
+    ({ url }) => url.pathname.match(/^\/api\/workouts\/[^/]+$/),
+    new workbox.strategies.NetworkFirst({ 
+      cacheName: 'workout-data',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 50,
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+        }),
+      ],
+    })
+  );
+
   // Global catch handler: serve the precached offline.html if any page navigation fails
   workbox.routing.setCatchHandler(async ({ request }) => {
     if (request.destination === 'document') {

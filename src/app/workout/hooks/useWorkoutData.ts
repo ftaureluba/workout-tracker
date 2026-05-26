@@ -18,6 +18,7 @@ export function useWorkoutData(workoutId: string) {
     const [workout, setWorkout] = useState<WorkoutLike | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isOffline, setIsOffline] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -33,6 +34,8 @@ export function useWorkoutData(workoutId: string) {
                 }
 
                 if (navigator.onLine) {
+                    setIsOffline(false);
+                    // Try to fetch fresh data if we don't have it cached
                     if (!cached) {
                         try {
                             const res = await fetch(`/api/workouts/${workoutId}`);
@@ -40,16 +43,27 @@ export function useWorkoutData(workoutId: string) {
                                 const data = await res.json();
                                 if (mounted) setWorkout(data as WorkoutLike);
                             }
-                        } catch {
-                            // keep cached
+                        } catch (err) {
+                            // If fetch fails and we have cache, keep using it
+                            // If no cache, set a detailed error
+                            if (!cached && mounted) {
+                                console.warn("Failed to fetch workout and no cache available", err);
+                            }
                         }
                     }
-                } else if (!cached) {
-                    setError("Offline and no cached workout available.");
+                } else {
+                    setIsOffline(true);
+                    // Offline: Use cached data if available, but don't error out
+                    // This allows the UI to show cached data or a message, but doesn't block the user
+                    if (!cached && mounted) {
+                        console.warn(`Offline: Workout ${workoutId} not in cache. User can still attempt to start if navigated correctly.`);
+                    }
                 }
             } catch (err: unknown) {
                 console.error(err);
-                setError(err instanceof Error ? err.message : String(err));
+                if (mounted) {
+                    setError(err instanceof Error ? err.message : String(err));
+                }
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -66,6 +80,7 @@ export function useWorkoutData(workoutId: string) {
         workout,
         loading,
         error,
+        isOffline,
     };
 }
 

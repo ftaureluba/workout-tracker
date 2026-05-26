@@ -31,7 +31,7 @@ function hasWorkoutExercises(x: unknown): x is Workout {
 
 export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const { workout, loading, error } = useWorkoutData(workoutId);
+  const { workout, loading, error, isOffline } = useWorkoutData(workoutId);
 
   // Last performance state — managed here so it reacts to editableExercises from useWorkoutSession
   const [lastPerformanceData, setLastPerformanceData] = useState<Record<string, LastPerformance>>({});
@@ -113,6 +113,29 @@ export default function WorkoutClient({ workoutId, resumeSessionId }: Props) {
 
   if (loading) return <div className="p-4">Loading workout…</div>;
   if (error) return <div className="p-4 text-red-600">{error}</div>;
+  
+  // If offline and workout not found, show a helpful message but allow blank workout
+  if (!workout && isOffline) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 text-sm">
+          <p className="text-yellow-100 mb-2">📴 You're offline</p>
+          <p className="text-yellow-200">
+            We couldn't load this workout offline. Your workouts are cached when you visit the dashboard online.
+            <br/><br/>
+            You can still track a blank workout, and it will be saved when you're back online.
+          </p>
+        </div>
+        <button 
+          onClick={() => window.history.back()} 
+          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+        >
+          Go Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+  
   if (!workout) return <div className="p-4">Workout not found.</div>;
 
   const workoutName =
