@@ -7,7 +7,7 @@ import type { Workout } from "@/lib/types";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const sessionUser = await auth();
   
@@ -16,7 +16,7 @@ export async function GET(
   }
 
   try {
-    const workoutId = params.id;
+    const { id: workoutId } = await params;
     if (!workoutId) {
       return NextResponse.json({ error: "Workout ID is required" }, { status: 400 });
     }
