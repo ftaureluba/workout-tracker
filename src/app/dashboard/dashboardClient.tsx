@@ -92,10 +92,10 @@ export function DashboardClient({ workouts: serverWorkouts, lastPerformedMap }: 
       });
 
       urlsToCache.forEach((url) => {
-        // For HTML pages, request with text/html
-        const headers = url.includes('/api') 
-          ? { "Content-Type": "application/json" }
-          : { Accept: "text/html" };
+        // For HTML pages, request with text/html; for API, let default Content-Type be used
+        const headers: Record<string, string> = url.includes('/api') 
+          ? { "Accept": "application/json" }
+          : { "Accept": "text/html" };
         
         fetch(url, { headers })
           .then((res) => {
