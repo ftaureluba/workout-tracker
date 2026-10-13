@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { List, BarChart2, X, Home, LogOut } from "lucide-react";
+import { List, BarChart2, X, Home, LogOut, CalendarDays } from "lucide-react";
 import { Button } from "../ui/button";
 import { useSidebar } from "@/lib/sidebar";
 import { signOut } from "next-auth/react";
@@ -63,6 +63,18 @@ export default function Sidebar() {
               >
                 <BarChart2 className="h-5 w-5" />
                 <span>Analíticas</span>
+              </button>
+            </li>
+            <li>
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 text-left"
+                onClick={() => {
+                  close();
+                  router.push("/plans");
+                }}
+              >
+                <CalendarDays className="h-5 w-5" />
+                <span>Plans</span>
               </button>
             </li>
           </ul>

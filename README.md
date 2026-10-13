@@ -20,6 +20,17 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Training Plans
+
+The plan tables are created by the normal Drizzle migration, but bundled plan templates are seeded separately. Configure `DATABASE_URL`, then run:
+
+```bash
+npm run db:migrate
+npm run db:seed:plans
+```
+
+The plan seed command is safe to rerun; it adds missing bundled plans, sessions, and shared exercises without deleting existing data.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

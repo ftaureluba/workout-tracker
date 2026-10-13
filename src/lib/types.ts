@@ -59,3 +59,94 @@ export interface ActiveSession {
   exercises: SessionExercise[];
 }
 
+// ── Plans Feature ─────────────────────────────────────────────────────────────
+
+export interface Plan {
+  id: string;
+  name: string;
+  description?: string | null;
+  durationWeeks: number;
+  sessionsPerWeek: number;
+  isPublic: boolean;
+  userId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlanWeek {
+  id: string;
+  planId: string;
+  weekNumber: number;
+}
+
+export interface PlanSession {
+  id: string;
+  planWeekId: string;
+  sessionLabel: string;
+  dayOfWeek?: number | null;
+  order: number;
+}
+
+export interface PlanSessionExercise {
+  id: string;
+  planSessionId: string;
+  exerciseId: string;
+  order: number;
+  prescribedSets: number;
+  prescribedReps: number;
+  /** Fraction of e1RM, e.g. 0.80 = 80% */
+  prescribedWeightPct?: number | null;
+  /** Absolute kg — for fixed-weight plans */
+  prescribedWeightAbs?: number | null;
+  restTimeSeconds?: number | null;
+  notes?: string | null;
+  exercise?: Exercise;
+}
+
+export type EnrollmentStatus = "active" | "paused" | "completed" | "abandoned";
+
+export interface UserPlanEnrollment {
+  id: string;
+  userId: string;
+  planId: string;
+  startedAt: string;
+  completedAt?: string | null;
+  currentWeek: number;
+  currentSessionOrder: number;
+  status: EnrollmentStatus;
+  createdAt: string;
+  plan?: Plan;
+}
+
+export interface EnrollmentExerciseMax {
+  id: string;
+  enrollmentId: string;
+  exerciseId: string;
+  /** Estimated 1RM in kg */
+  e1rm: number;
+}
+
+export interface PlanWorkoutLink {
+  workoutId: string;
+  planSessionId: string;
+  enrollmentId: string;
+}
+
+/** Full plan detail with nested structure */
+export interface PlanDetail extends Plan {
+  weeks: (PlanWeek & {
+    sessions: (PlanSession & {
+      exercises: PlanSessionExercise[];
+    })[];
+  })[];
+}
+
+/** Shape returned by GET /api/enrollments/active */
+export interface ActiveEnrollmentSummary {
+  enrollment: UserPlanEnrollment;
+  plan: Plan;
+  nextSession: (PlanSession & { exercises: PlanSessionExercise[] }) | null;
+  totalSessions: number;
+  completedSessions: number;
+}
+

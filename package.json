@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed:plans": "tsx src/lib/seed-plans.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.10.0",
@@ -90,6 +91,7 @@
     "eslint-config-next": "15.4.1",
     "postcss": "^8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   },
