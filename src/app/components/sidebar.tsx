@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { List, BarChart2, X, Home, LogOut, CalendarDays } from "lucide-react";
+import { List, BarChart2, X, Home, LogOut, CalendarDays, ClipboardList, Download, Share2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useSidebar } from "@/lib/sidebar";
 import { signOut } from "next-auth/react";
@@ -10,6 +10,26 @@ import { clearAllData } from "@/lib/indexdb";
 export default function Sidebar() {
   const router = useRouter();
   const { isOpen, close } = useSidebar();
+
+  const shareApp = async () => {
+    close();
+    if (!navigator.share) {
+      router.push("/install");
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: "Workout Tracker",
+        text: "Track your workouts and progress.",
+        url: new URL("/", window.location.origin).toString(),
+      });
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        router.push("/install");
+      }
+    }
+  };
 
   return (
     <>
@@ -70,11 +90,44 @@ export default function Sidebar() {
                 className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 text-left"
                 onClick={() => {
                   close();
-                  router.push("/plans");
+                  router.push("/calendar");
                 }}
               >
                 <CalendarDays className="h-5 w-5" />
+                <span>Calendar</span>
+              </button>
+            </li>
+            <li>
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 text-left"
+                onClick={() => {
+                  close();
+                  router.push("/plans");
+                }}
+              >
+                <ClipboardList className="h-5 w-5" />
                 <span>Plans</span>
+              </button>
+            </li>
+            <li>
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 text-left"
+                onClick={shareApp}
+              >
+                <Share2 className="h-5 w-5" />
+                <span>Share app</span>
+              </button>
+            </li>
+            <li>
+              <button
+                className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 text-left"
+                onClick={() => {
+                  close();
+                  router.push("/install");
+                }}
+              >
+                <Download className="h-5 w-5" />
+                <span>Install app</span>
               </button>
             </li>
           </ul>

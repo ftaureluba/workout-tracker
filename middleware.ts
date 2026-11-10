@@ -8,7 +8,7 @@ export default auth((req) => {
   console.log(`[Middleware] pathname: ${pathname}, isLoggedIn: ${isLoggedIn}`);
 
   // Public routes that don't need auth
-  const isPublicRoute = ["/", "/login", "/signup"].includes(pathname);
+  const isPublicRoute = ["/", "/login", "/signup", "/install"].includes(pathname);
 
   // Protect all routes except public ones
   if (!isPublicRoute && !isLoggedIn) {

@@ -1,4 +1,4 @@
-"use client"
+ "use client"
 
 import { useState, useMemo, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
@@ -42,7 +42,6 @@ export default function ExercisePicker({ isOpen, onClose, onAddExercise }: Exerc
   const [selectedMovementPattern, setSelectedMovementPattern] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
 
-  // Fetch exercises when dialog opens
   useEffect(() => {
     if (isOpen) {
       fetchExercises()
